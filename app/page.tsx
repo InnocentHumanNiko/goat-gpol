@@ -1,4 +1,4 @@
-import { HomeView } from "@/components/home-view"
+import { AppShell } from "@/components/app-shell"
 import { LoginPage } from "@/components/login-page"
 import { getSessionUser } from "@/lib/session"
 
@@ -14,5 +14,14 @@ export default async function HomePage({
   if (!user) {
     return <LoginPage authError={authError} />
   }
-  return <HomeView user={user} />
+  return (
+    <AppShell
+      user={{
+        osuId: user.osu_id,
+        username: user.username,
+        avatarUrl: user.avatar_url,
+        countryCode: user.country_code,
+      }}
+    />
+  )
 }
