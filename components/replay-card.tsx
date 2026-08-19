@@ -124,10 +124,15 @@ export function ReplayCard({
         </div>
         <div className="flex min-w-0 flex-1 flex-col gap-0.5 px-4 py-3">
           <div className="flex items-center gap-2">
-            <span className="min-w-0 truncate text-sm font-medium">
+            <a
+              href={replay.beatmap.url}
+              target="_blank"
+              rel="noreferrer"
+              className="min-w-0 truncate text-sm font-medium hover:underline underline-offset-2"
+            >
               {replay.beatmap.artist} - {replay.beatmap.title} [
               {replay.beatmap.version}]
-            </span>
+            </a>
             <Badge variant="outline">
               {replay.beatmap.starRating.toFixed(2)}★
             </Badge>
@@ -152,16 +157,28 @@ export function ReplayCard({
           </div>
           <p className="text-xs text-muted-foreground">
             Score set by{" "}
-            <span className="font-medium text-foreground">
+            <a
+              href={`https://osu.ppy.sh/users/${encodeURIComponent(
+                replay.score.username,
+              )}`}
+              target="_blank"
+              rel="noreferrer"
+              className="font-medium text-foreground hover:underline underline-offset-2"
+            >
               {replay.score.username}
-            </span>{" "}
+            </a>{" "}
             on {replay.score.date.toLocaleDateString()}
           </p>
           <p className="text-xs text-muted-foreground">
             Submitted by{" "}
-            <span className="font-medium text-foreground">
+            <a
+              href={`https://osu.ppy.sh/users/${replay.submitter.osuId}`}
+              target="_blank"
+              rel="noreferrer"
+              className="font-medium text-foreground hover:underline underline-offset-2"
+            >
               {replay.submitter.username}
-            </span>{" "}
+            </a>{" "}
             on {new Date(replay.createdAt).toLocaleDateString()}
           </p>
           {replay.notes !== "" && (
