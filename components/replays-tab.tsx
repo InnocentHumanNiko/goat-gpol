@@ -27,6 +27,7 @@ import type {
   BeatmapInfo,
   Replay,
   ReplayInput,
+  ScoreStats,
   Skin,
 } from "@/components/app-shell"
 
@@ -57,6 +58,60 @@ function Stat({
       <dt className="text-xs text-muted-foreground">{label}</dt>
       <dd className="whitespace-nowrap text-sm font-medium">{value}</dd>
     </div>
+  )
+}
+
+function ScoreStatsPanel({
+  score,
+  beatmapMaxCombo,
+}: {
+  score: ScoreStats
+  beatmapMaxCombo: number
+}) {
+  return (
+    <dl className="flex w-full flex-col gap-2">
+      <div className="flex gap-2">
+        <Stat label="Grade" value={score.rank} className="flex-1" />
+        <Stat
+          label="Score"
+          value={score.totalScore.toLocaleString()}
+          className="flex-1"
+        />
+        <Stat
+          label="Accuracy"
+          value={`${(score.accuracy * 100).toFixed(2)}%`}
+          className="flex-1"
+        />
+        <Stat
+          label="Combo"
+          value={`${score.maxCombo} / ${beatmapMaxCombo}`}
+          className="flex-1"
+        />
+        <Stat
+          label="Mods"
+          value={score.mods.join("") || "NM"}
+          className="flex-1"
+        />
+      </div>
+      <div className="flex divide-x overflow-hidden rounded-md border bg-muted/50">
+        {(
+          [
+            { label: "300", value: score.count300 },
+            { label: "100", value: score.count100 },
+            { label: "50", value: score.count50 },
+            { label: "Miss", value: score.countMiss },
+          ] as const
+        ).map((s) => (
+          <div
+            key={s.label}
+            className="flex flex-1 flex-col items-center gap-0.5 px-2 py-2"
+          >
+            <dt className="text-xs text-muted-foreground">{s.label}</dt>
+            <dd className="whitespace-nowrap text-sm font-medium">{s.value}</dd>
+          </div>
+        ))}
+      </div>
+    </dl>
   )
 }
 
@@ -159,49 +214,7 @@ function ReplaySubmitForm({
           </DialogDescription>
         </DialogHeader>
         <div className="flex flex-col gap-3">
-          <dl className="flex w-full flex-col gap-2">
-            <div className="flex gap-2">
-              <Stat label="Grade" value={score.rank} className="flex-1" />
-              <Stat
-                label="Score"
-                value={score.totalScore.toLocaleString()}
-                className="flex-1"
-              />
-              <Stat
-                label="Accuracy"
-                value={`${(score.accuracy * 100).toFixed(2)}%`}
-                className="flex-1"
-              />
-              <Stat
-                label="Combo"
-                value={`${score.maxCombo} / ${beatmap.maxCombo}`}
-                className="flex-1"
-              />
-              <Stat
-                label="Mods"
-                value={score.mods.join("") || "NM"}
-                className="flex-1"
-              />
-            </div>
-            <div className="flex divide-x overflow-hidden rounded-md border bg-muted/50">
-              {(
-                [
-                  { label: "300", value: score.count300 },
-                  { label: "100", value: score.count100 },
-                  { label: "50", value: score.count50 },
-                  { label: "Miss", value: score.countMiss },
-                ] as const
-              ).map((s) => (
-                <div
-                  key={s.label}
-                  className="flex flex-1 flex-col items-center gap-0.5 px-2 py-2"
-                >
-<dt className="text-xs text-muted-foreground">{s.label}</dt>
-                    <dd className="whitespace-nowrap text-sm font-medium">{s.value}</dd>
-                </div>
-              ))}
-            </div>
-          </dl>
+          <ScoreStatsPanel score={score} beatmapMaxCombo={beatmap.maxCombo} />
           {(skinName || confirmNotes !== "") && (
             <div className="flex flex-col gap-1 rounded-md border px-3 py-2 text-sm">
               {skinName && (
@@ -321,6 +334,70 @@ function EmptyState() {
   )
 }
 
+function ReplayCard({ replay }: { replay: Replay }) {
+  return (
+    <Tooltip>
+      <TooltipTrigger
+        render={<li className="flex items-stretch" />}
+      >
+        <div className="relative w-28 shrink-0 bg-muted/50">
+          {replay.beatmap.coverListUrl ? (
+            <Image
+              src={replay.beatmap.coverListUrl}
+              alt={`${replay.beatmap.artist} - ${replay.beatmap.title} cover`}
+              fill
+              unoptimized
+              className="object-cover"
+            />
+          ) : (
+            <div className="flex h-full items-center justify-center">
+              <IconFile className="size-4 text-muted-foreground" />
+            </div>
+          )}
+        </div>
+        <div className="flex min-w-0 flex-1 flex-col gap-0.5 px-4 py-3">
+          <div className="flex items-center gap-2">
+            <span className="min-w-0 truncate text-sm font-medium">
+              {replay.beatmap.artist} - {replay.beatmap.title} [
+              {replay.beatmap.version}]
+            </span>
+            <Badge variant="outline">
+              {replay.beatmap.starRating.toFixed(2)}★
+            </Badge>
+            {replay.score.maxCombo === replay.beatmap.maxCombo && (
+              <Badge variant="secondary">PFC</Badge>
+            )}
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Score set by{" "}
+            <span className="font-medium text-foreground">
+              {replay.score.username}
+            </span>{" "}
+            on {replay.score.date.toLocaleDateString()}
+          </p>
+          <p className="text-xs text-muted-foreground">
+            Submitted on {new Date(replay.createdAt).toLocaleDateString()}
+          </p>
+          {replay.notes !== "" && (
+            <p className="text-sm text-muted-foreground">{replay.notes}</p>
+          )}
+        </div>
+      </TooltipTrigger>
+      <TooltipContent
+        side="top"
+        align="center"
+        hideArrow
+        className="w-fit max-w-none items-stretch gap-3 rounded-xl border bg-card px-4 py-3 text-foreground shadow-lg"
+      >
+        <ScoreStatsPanel
+          score={replay.score}
+          beatmapMaxCombo={replay.beatmap.maxCombo}
+        />
+      </TooltipContent>
+    </Tooltip>
+  )
+}
+
 export function ReplaysTab({
   replays,
   skins,
@@ -361,35 +438,9 @@ export function ReplaysTab({
       {replays.length === 0 ? (
         <EmptyState />
       ) : (
-        <ul className="flex flex-col divide-y rounded-xl bg-card shadow-xs ring-1 ring-foreground/10">
+        <ul className="flex flex-col divide-y overflow-hidden rounded-xl bg-card shadow-xs ring-1 ring-foreground/10">
           {replays.map((replay) => (
-            <li key={replay.id} className="flex flex-col gap-1 px-4 py-3">
-              <div className="flex items-center justify-between gap-4">
-                <div className="flex min-w-0 items-center gap-2">
-                  <IconFile className="size-4 shrink-0 text-muted-foreground" />
-                  <span className="truncate text-sm font-medium">
-                    {replay.fileName}
-                  </span>
-                </div>
-                <div className="flex shrink-0 items-center gap-2">
-                  {replay.skinName && (
-                    <Badge variant="outline">{replay.skinName}</Badge>
-                  )}
-                  <span className="text-xs text-muted-foreground">
-                    {new Date(replay.createdAt).toLocaleDateString()}
-                  </span>
-                </div>
-              </div>
-              <p className="pl-6 text-sm text-muted-foreground">
-                {replay.beatmap.artist} - {replay.beatmap.title} [
-                {replay.beatmap.version}]
-              </p>
-              {replay.notes !== "" && (
-                <p className="pl-6 text-sm text-muted-foreground">
-                  {replay.notes}
-                </p>
-              )}
-            </li>
+            <ReplayCard key={replay.id} replay={replay} />
           ))}
         </ul>
       )}

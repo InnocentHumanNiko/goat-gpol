@@ -31,9 +31,14 @@ export type BeatmapInfo = {
   maxCombo: number
   url: string
   backgroundUrl: string
+  coverListUrl: string
 }
 
 export type ScoreStats = {
+  rank: string
+  username: string
+  date: Date
+  totalScore: number
   maxCombo: number
   accuracy: number
   mods: string[]

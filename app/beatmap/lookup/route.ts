@@ -28,6 +28,7 @@ export async function GET(request: NextRequest) {
       maxCombo: beatmap.max_combo,
       url: beatmap.url,
       backgroundUrl: beatmap.beatmapset.covers.cover,
+      coverListUrl: beatmap.beatmapset.covers.list,
     })
   } catch {
     return Response.json({ error: "beatmap not found" }, { status: 404 })
