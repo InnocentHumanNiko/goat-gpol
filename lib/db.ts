@@ -116,7 +116,7 @@ function migrate(db: Database) {
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       replay_id INTEGER NOT NULL REFERENCES replays(id) ON DELETE CASCADE,
       judge_osu_id INTEGER NOT NULL REFERENCES users(osu_id) ON DELETE CASCADE,
-      score INTEGER NOT NULL CHECK(score BETWEEN 0 AND 5),
+      score REAL NOT NULL CHECK(score BETWEEN 0 AND 5),
       comment TEXT NOT NULL DEFAULT '',
       created_at INTEGER NOT NULL,
       updated_at INTEGER NOT NULL,

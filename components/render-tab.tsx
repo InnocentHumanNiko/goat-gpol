@@ -44,7 +44,7 @@ export function RenderTab() {
       <header>
         <h1 className="font-heading text-xl font-semibold">Render</h1>
         <p className="text-sm text-muted-foreground">
-          Replays that passed judging and are queued for rendering.
+          Passed quality control
         </p>
       </header>
 
@@ -82,12 +82,11 @@ export function RenderTab() {
               }
               actions={
                 <Button
-                  variant="outline"
-                  size="sm"
+                  variant="ghost"
+                  size="icon-sm"
                   render={<a href={`/replays/${replay.id}/file`} />}
                 >
                   <IconDownload />
-                  Download
                 </Button>
               }
             />

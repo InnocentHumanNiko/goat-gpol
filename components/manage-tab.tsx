@@ -353,7 +353,7 @@ export function ManageTab({ user }: { user: SessionUser }) {
       <header>
         <h1 className="font-heading text-xl font-semibold">Manage</h1>
         <p className="text-sm text-muted-foreground">
-          Admin dashboard for users, replays and judgments.
+          Don&apos;t abuse please...
         </p>
       </header>
 
@@ -483,11 +483,6 @@ export function ManageTab({ user }: { user: SessionUser }) {
                     <ReplayCard
                       as="div"
                       replay={replay}
-                      badges={
-                        <Badge variant="outline">
-                          {replay.status === "render" ? "Render" : "Pool"}
-                        </Badge>
-                      }
                       actions={
                         <>
                           <Button

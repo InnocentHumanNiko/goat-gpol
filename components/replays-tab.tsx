@@ -321,21 +321,6 @@ export function ReplaysTab({
             <ReplayCard
               key={replay.id}
               replay={replay}
-              badges={
-                <>
-                  {replay.judgmentSummary.count > 0 && (
-                    <Badge variant="secondary">
-                      {replay.judgmentSummary.count}×{" "}
-                      {replay.judgmentSummary.average !== null
-                        ? replay.judgmentSummary.average.toFixed(2)
-                        : ""}
-                    </Badge>
-                  )}
-                  <Badge variant="outline">
-                    {replay.status === "render" ? "Render" : "Pool"}
-                  </Badge>
-                </>
-              }
             />
           ))}
         </ul>

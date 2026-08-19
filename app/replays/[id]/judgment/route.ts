@@ -24,14 +24,14 @@ function parseScoreComment(body: unknown): {
   const { score, comment } = body as Record<string, unknown>
   if (
     typeof score !== "number" ||
-    !Number.isInteger(score) ||
+    !Number.isFinite(score) ||
     score < 0 ||
     score > 5 ||
     typeof comment !== "string"
   ) {
     return null
   }
-  return { score, comment }
+  return { score: Math.round(score * 100) / 100, comment }
 }
 
 export async function GET(

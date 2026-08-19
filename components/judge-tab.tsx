@@ -18,11 +18,8 @@ import {
 import { ReplayCard } from "@/components/replay-card"
 import { Textarea } from "@/components/ui/textarea"
 import { IconDownload, IconScale } from "@tabler/icons-react"
-import { cn } from "@/lib/utils"
 import { replayFromApi, type Replay } from "@/components/app-shell"
 import type { ReplayApi } from "@/lib/replay-types"
-
-const SCORES = [0, 1, 2, 3, 4, 5]
 
 function JudgeDialog({
   replay,
@@ -68,10 +65,10 @@ function JudgeDialog({
         }
       >
         <IconScale />
-        {replay.myJudgment ? "Edit judgment" : "Judge"}
+        {replay.myJudgment ? "Edit vote" : "Vote"}
       </DialogTrigger>
       <DialogContent>
-        <DialogHeader>
+        <DialogHeader className="mb-4">
           <DialogTitle>
             {replay.beatmap.artist} - {replay.beatmap.title} [
             {replay.beatmap.version}]
@@ -82,26 +79,39 @@ function JudgeDialog({
           </DialogDescription>
         </DialogHeader>
         <div className="flex flex-col gap-4">
-          <div className="flex flex-col gap-1.5">
-            <span className="text-sm font-medium">Score</span>
-            <div className="flex flex-wrap gap-1.5">
-              {SCORES.map((value) => (
-                <button
-                  key={value}
-                  type="button"
-                  onClick={() => setScore(value)}
-                  aria-pressed={score === value}
-                  className={cn(
-                    "h-9 min-w-10 rounded-md border text-sm font-medium transition-colors",
-                    score === value
-                      ? "border-primary bg-primary text-primary-foreground"
-                      : "border-border bg-background text-muted-foreground hover:text-foreground",
-                  )}
-                >
-                  {value}
-                </button>
-              ))}
+          <div className="flex flex-col gap-2">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-sm font-medium">Score</span>
+              <input
+                type="number"
+                min={0}
+                max={5}
+                step={0.01}
+                value={score}
+                onChange={(e) => {
+                  if (e.target.value === "") {
+                    return
+                  }
+                  const raw = Number(e.target.value)
+                  if (!Number.isFinite(raw)) {
+                    return
+                  }
+                  setScore(
+                    Math.min(5, Math.max(0, Math.round(raw * 100) / 100)),
+                  )
+                }}
+                className="h-8 w-16 rounded-md border border-input bg-transparent px-2 text-right text-sm tabular-nums outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+              />
             </div>
+            <input
+              type="range"
+              min={0}
+              max={5}
+              step={0.5}
+              value={score}
+              onChange={(e) => setScore(Number(e.target.value))}
+              className="w-full accent-primary"
+            />
           </div>
           <div className="flex flex-col gap-1.5">
             <label htmlFor="judge-comment" className="text-sm font-medium">
@@ -111,17 +121,18 @@ function JudgeDialog({
               id="judge-comment"
               value={comment}
               onChange={(e) => setComment(e.target.value)}
-              placeholder="Why this score?"
+              placeholder="better than me"
+              className="resize-none"
             />
           </div>
           {error && <p className="text-sm text-destructive">{error}</p>}
         </div>
-        <DialogFooter>
+        <DialogFooter className="mt-4">
           <DialogClose render={<Button variant="outline" />}>
             Cancel
           </DialogClose>
-          <Button onClick={handleSave} disabled={saving}>
-            {saving ? "Saving…" : "Save judgment"}
+          <Button onClick={handleSave} disabled={saving} className="px-4">
+            {saving ? "Saving…" : "Vote"}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -166,10 +177,7 @@ export function JudgeTab() {
     <div className="flex flex-col gap-6">
       <header>
         <h1 className="font-heading text-xl font-semibold">Judge</h1>
-        <p className="text-sm text-muted-foreground">
-          Replays in the pool, newest first. Judge them to help good scores get
-          rendered.
-        </p>
+        <p className="text-sm text-muted-foreground">Fresh replays yummy yummy</p>
       </header>
 
       {failed ? (
@@ -208,12 +216,11 @@ export function JudgeTab() {
               actions={
                 <>
                   <Button
-                    variant="outline"
-                    size="sm"
+                    variant="ghost"
+                    size="icon-sm"
                     render={<a href={`/replays/${replay.id}/file`} />}
                   >
                     <IconDownload />
-                    Download
                   </Button>
                   <JudgeDialog replay={replay} onJudged={handleJudged} />
                 </>
