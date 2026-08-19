@@ -60,6 +60,21 @@ export async function PATCH(request: NextRequest) {
     return Response.json({ error: "not found" }, { status: 404 })
   }
 
+  if (actor.osu_id === target.osu_id) {
+    if (body.role !== undefined) {
+      return Response.json(
+        { error: "you cannot change your own role" },
+        { status: 403 },
+      )
+    }
+    if (body.banned !== undefined) {
+      return Response.json(
+        { error: "you cannot ban or unban yourself" },
+        { status: 403 },
+      )
+    }
+  }
+
   let nextRole = target.role
   let nextBannedAt = target.banned_at
 

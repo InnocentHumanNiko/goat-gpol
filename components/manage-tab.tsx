@@ -40,8 +40,9 @@ function RoleSelect({
 }) {
   const isManagerTarget = user.role === "manager"
   const canEditAdmin = isManager(actor.role)
+  const isSelf = user.osuId === actor.osuId
   const disabled =
-    isManagerTarget || (user.role === "admin" && !canEditAdmin)
+    isSelf || isManagerTarget || (user.role === "admin" && !canEditAdmin)
 
   if (isManagerTarget) {
     return <span className="text-xs font-medium">manager</span>
@@ -458,6 +459,7 @@ export function ManageTab({ user }: { user: SessionUser }) {
                         <Button
                           variant="outline"
                           size="xs"
+                          disabled={u.osuId === user.osuId}
                           onClick={() => toggleBan(u)}
                         >
                           {u.bannedAt === null ? "Ban" : "Unban"}
