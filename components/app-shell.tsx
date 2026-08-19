@@ -71,6 +71,7 @@ export type Replay = ReplayInput & {
   createdAt: number
   submitter: { osuId: number; username: string }
   status: ReplayStatus
+  manual: boolean
   myJudgment: { score: number; comment: string } | null
   judgmentSummary: { count: number; average: number | null }
 }
@@ -86,6 +87,7 @@ export function replayFromApi(api: ReplayApi): Replay {
     beatmap: api.beatmap,
     score: { ...api.score, date: new Date(api.score.date) },
     status: api.status,
+    manual: api.manual,
     myJudgment: api.myJudgment,
     judgmentSummary: api.judgmentSummary,
     submitter: api.submitter,

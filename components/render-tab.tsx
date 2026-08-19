@@ -181,7 +181,13 @@ export function RenderTab() {
                   >
                     <IconDownload />
                   </Button>
-                  <VotingStatsDialog replay={replay} />
+                  {replay.manual && replay.status === "render" ? (
+                    <Button variant="ghost" size="icon-sm" disabled>
+                      <IconChartBar />
+                    </Button>
+                  ) : (
+                    <VotingStatsDialog replay={replay} />
+                  )}
                 </>
               }
             />

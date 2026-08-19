@@ -5,7 +5,7 @@ import type { ReactNode } from "react"
 
 import { Badge } from "@/components/ui/badge"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
-import { IconFile } from "@tabler/icons-react"
+import { IconFile, IconTool } from "@tabler/icons-react"
 import { cn } from "@/lib/utils"
 import type { Replay, ScoreStats } from "@/components/app-shell"
 
@@ -133,6 +133,20 @@ export function ReplayCard({
             </Badge>
             {replay.score.maxCombo === replay.beatmap.maxCombo && (
               <Badge variant="secondary">PFC</Badge>
+            )}
+            {replay.manual && (
+              <Tooltip>
+                <TooltipTrigger
+                  render={<Badge variant="secondary" aria-label="Manual" />}
+                >
+                  <IconTool className="h-3.5 w-3.5" />
+                </TooltipTrigger>
+                <TooltipContent side="top" className="text-xs">
+                  {replay.status === "pool"
+                    ? "This replay was manually demoted and can no longer be accepted for rendering."
+                    : "This replay was manually promoted."}
+                </TooltipContent>
+              </Tooltip>
             )}
             {badges}
           </div>

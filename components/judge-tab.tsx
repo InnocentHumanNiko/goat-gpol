@@ -24,9 +24,11 @@ import type { ReplayApi } from "@/lib/replay-types"
 function JudgeDialog({
   replay,
   onJudged,
+  disabled,
 }: {
   replay: Replay
   onJudged: (updated: Replay) => void
+  disabled: boolean
 }) {
   const [score, setScore] = useState(replay.myJudgment?.score ?? 0)
   const [comment, setComment] = useState(replay.myJudgment?.comment ?? "")
@@ -59,14 +61,25 @@ function JudgeDialog({
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger
-        render={
-          <Button variant={replay.myJudgment ? "secondary" : "default"} size="sm" />
-        }
-      >
-        <IconScale />
-        {replay.myJudgment ? "Edit vote" : "Vote"}
-      </DialogTrigger>
+      {disabled ? (
+        <Button
+          variant={replay.myJudgment ? "secondary" : "default"}
+          size="sm"
+          disabled
+        >
+          <IconScale />
+          {replay.myJudgment ? "Edit vote" : "Vote"}
+        </Button>
+      ) : (
+        <DialogTrigger
+          render={
+            <Button variant={replay.myJudgment ? "secondary" : "default"} size="sm" />
+          }
+        >
+          <IconScale />
+          {replay.myJudgment ? "Edit vote" : "Vote"}
+        </DialogTrigger>
+      )}
       <DialogContent>
         <DialogHeader className="mb-4">
           <DialogTitle>
@@ -220,7 +233,7 @@ export function JudgeTab() {
                   >
                     <IconDownload />
                   </Button>
-                  <JudgeDialog replay={replay} onJudged={handleJudged} />
+                  <JudgeDialog replay={replay} onJudged={handleJudged} disabled={replay.manual} />
                 </>
               }
             />

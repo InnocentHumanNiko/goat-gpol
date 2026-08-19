@@ -85,6 +85,8 @@ function migrate(db: Database) {
       notes TEXT NOT NULL DEFAULT '',
       skin_name TEXT,
       status TEXT NOT NULL DEFAULT 'pool',
+      manual INTEGER NOT NULL DEFAULT 0,
+      locked INTEGER NOT NULL DEFAULT 0,
       beatmap_checksum TEXT NOT NULL,
       beatmap_id INTEGER NOT NULL,
       beatmap_title TEXT NOT NULL,
@@ -138,6 +140,8 @@ function migrate(db: Database) {
   ensureColumn(db, "users", "role", "role TEXT NOT NULL DEFAULT 'basic'")
   ensureColumn(db, "users", "banned_at", "banned_at INTEGER")
   ensureColumn(db, "replays", "status", "status TEXT NOT NULL DEFAULT 'pool'")
+  ensureColumn(db, "replays", "manual", "manual INTEGER NOT NULL DEFAULT 0")
+  ensureColumn(db, "replays", "locked", "locked INTEGER NOT NULL DEFAULT 0")
   db.run("CREATE INDEX IF NOT EXISTS idx_sessions_osu_id ON sessions(osu_id)")
   db.run("CREATE INDEX IF NOT EXISTS idx_sessions_expires_at ON sessions(expires_at)")
   db.run("CREATE INDEX IF NOT EXISTS idx_replays_created_at ON replays(created_at DESC)")
@@ -265,6 +269,8 @@ export type ReplayRow = {
   notes: string
   skin_name: string | null
   status: ReplayStatus
+  manual: number
+  locked: number
   beatmap_checksum: string
   beatmap_id: number
   beatmap_title: string
@@ -382,8 +388,17 @@ export function updateReplayFilePath(id: number, filePath: string) {
   getDb().run("UPDATE replays SET file_path = ? WHERE id = ?", [filePath, id])
 }
 
-export function updateReplayStatus(id: number, status: ReplayStatus) {
-  getDb().run("UPDATE replays SET status = ? WHERE id = ?", [status, id])
+export function updateReplayStatusManually(id: number, status: ReplayStatus) {
+  const db = getDb()
+  db.run(
+    `UPDATE replays
+     SET status = ?,
+         manual = 1,
+         locked = CASE WHEN ? = 'pool' THEN 1 ELSE locked END
+     WHERE id = ?`,
+    [status, status, id],
+  )
+  db.run("DELETE FROM judgments WHERE replay_id = ?", [id])
 }
 
 export function deleteReplayRow(id: number) {
@@ -520,14 +535,21 @@ export function countEligibleJudges(): number {
 }
 
 export function recomputeReplayStatus(replayId: number) {
-  updateReplayStatus(
+  const row = getDb().query<{ locked: number }, [number]>(
+    "SELECT locked FROM replays WHERE id = ?",
+  ).get(replayId)
+  const locked = row?.locked === 1
+  const status = locked
+    ? "pool"
+    : statusFromJudgments(
+        getJudgmentScores(replayId),
+        countEligibleJudges(),
+        getJudgeSettings(),
+      )
+  getDb().run("UPDATE replays SET status = ?, manual = 0 WHERE id = ?", [
+    status,
     replayId,
-    statusFromJudgments(
-      getJudgmentScores(replayId),
-      countEligibleJudges(),
-      getJudgeSettings(),
-    ),
-  )
+  ])
 }
 
 export function recomputeAllReplayStatuses() {
@@ -589,6 +611,7 @@ export function replayRowToApi(
     notes: row.notes,
     beatmapChecksum: row.beatmap_checksum,
     status: row.status,
+    manual: row.manual === 1,
     beatmap: {
       id: row.beatmap_id,
       title: row.beatmap_title,

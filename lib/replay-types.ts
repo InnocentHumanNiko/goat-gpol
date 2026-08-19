@@ -45,6 +45,7 @@ export type ReplayApi = ReplayMetadata & {
   createdAt: number
   submitter: { osuId: number; username: string }
   status: ReplayStatus
+  manual: boolean
   myJudgment: { score: number; comment: string } | null
   judgmentSummary: { count: number; average: number | null }
 }

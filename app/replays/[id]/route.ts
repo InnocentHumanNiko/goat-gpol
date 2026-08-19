@@ -5,7 +5,7 @@ import {
   deleteReplayRow,
   getReplayById,
   replayToApiForViewer,
-  updateReplayStatus,
+  updateReplayStatusManually,
 } from "@/lib/db"
 import { getSessionUser } from "@/lib/session"
 import { canAdmin } from "@/lib/roles"
@@ -34,7 +34,7 @@ export async function PATCH(
   if (status !== "pool" && status !== "render") {
     return Response.json({ error: "invalid status" }, { status: 400 })
   }
-  updateReplayStatus(replay.id, status as ReplayStatus)
+  updateReplayStatusManually(replay.id, status as ReplayStatus)
   const updated = replayToApiForViewer(replay.id, user.osu_id)
   return Response.json(updated)
 }
