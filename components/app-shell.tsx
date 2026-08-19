@@ -2,18 +2,24 @@
 
 import { useState } from "react"
 
+import { JudgeTab } from "@/components/judge-tab"
+import { ManageTab } from "@/components/manage-tab"
+import { RenderTab } from "@/components/render-tab"
 import { ReplaysTab } from "@/components/replays-tab"
 import { SiteNav } from "@/components/site-nav"
 import { SkinsTab } from "@/components/skins-tab"
-import type { ReplayApi } from "@/lib/replay-types"
+import { canAdmin, canJudge } from "@/lib/roles"
+import type { ReplayApi, ReplayStatus, Role, SkinApi } from "@/lib/replay-types"
 
-export type Tab = "replays" | "skins"
+export type Tab = "replays" | "skins" | "judge" | "render" | "manage"
 
 export type SessionUser = {
   osuId: number
   username: string
   avatarUrl: string
   countryCode: string
+  role: Role
+  bannedAt: number | null
 }
 
 export type Skin = {
@@ -64,9 +70,12 @@ export type Replay = ReplayInput & {
   id: number
   createdAt: number
   submitter: { osuId: number; username: string }
+  status: ReplayStatus
+  myJudgment: { score: number; comment: string } | null
+  judgmentSummary: { count: number; average: number | null }
 }
 
-function replayFromApi(api: ReplayApi): Replay {
+export function replayFromApi(api: ReplayApi): Replay {
   return {
     id: api.id,
     createdAt: api.createdAt,
@@ -76,6 +85,9 @@ function replayFromApi(api: ReplayApi): Replay {
     beatmapChecksum: api.beatmapChecksum,
     beatmap: api.beatmap,
     score: { ...api.score, date: new Date(api.score.date) },
+    status: api.status,
+    myJudgment: api.myJudgment,
+    judgmentSummary: api.judgmentSummary,
     submitter: api.submitter,
   }
 }
@@ -83,18 +95,31 @@ function replayFromApi(api: ReplayApi): Replay {
 export function AppShell({
   user,
   initialReplays,
+  initialSkins,
 }: {
   user: SessionUser
   initialReplays: ReplayApi[]
+  initialSkins: SkinApi[]
 }) {
   const [tab, setTab] = useState<Tab>("replays")
   const [replays, setReplays] = useState<Replay[]>(() =>
     initialReplays.map(replayFromApi),
   )
-  const [skins, setSkins] = useState<Skin[]>([])
+  const [skins, setSkins] = useState<Skin[]>(() =>
+    initialSkins.map((skin) => ({ ...skin })),
+  )
 
-  const addSkin = (name: string) => {
-    setSkins((prev) => [...prev, { id: Date.now(), name, createdAt: Date.now() }])
+  const addSkin = async (name: string) => {
+    const res = await fetch("/skins", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name }),
+    })
+    if (!res.ok) {
+      throw new Error("skin-upload-failed")
+    }
+    const created = (await res.json()) as Skin
+    setSkins((prev) => [created, ...prev])
   }
 
   const addReplay = async (input: ReplayInput, file: File) => {
@@ -119,15 +144,30 @@ export function AppShell({
     setReplays((prev) => [replayFromApi(created), ...prev])
   }
 
+  const canSubmit = user.bannedAt === null
+
   return (
     <div className="flex min-h-dvh flex-col">
       <SiteNav tab={tab} onTabChange={setTab} user={user} />
       <main className="mx-auto w-full max-w-3xl flex-1 px-4 py-8">
-        {tab === "replays" ? (
-          <ReplaysTab replays={replays} skins={skins} onSubmit={addReplay} />
-        ) : (
-          <SkinsTab skins={skins} onUpload={addSkin} />
+        {tab === "replays" && (
+          <ReplaysTab
+            replays={replays}
+            skins={skins}
+            onSubmit={addReplay}
+            canSubmit={canSubmit}
+          />
         )}
+        {tab === "skins" && (
+          <SkinsTab
+            skins={skins}
+            onUpload={addSkin}
+            canSubmit={canSubmit}
+          />
+        )}
+        {tab === "judge" && canJudge(user.role) && <JudgeTab />}
+        {tab === "render" && canJudge(user.role) && <RenderTab />}
+        {tab === "manage" && canAdmin(user.role) && <ManageTab user={user} />}
       </main>
     </div>
   )

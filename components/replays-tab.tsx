@@ -18,16 +18,15 @@ import {
 } from "@/components/ui/dialog"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { FilePicker } from "@/components/file-picker"
+import { ReplayCard, ScoreStatsPanel } from "@/components/replay-card"
 import { Select } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { IconExternalLink, IconFile, IconUpload } from "@tabler/icons-react"
 import { decodeReplayFile, type DecodedScore } from "@/lib/replay-decode"
-import { cn } from "@/lib/utils"
 import type {
   BeatmapInfo,
   Replay,
   ReplayInput,
-  ScoreStats,
   Skin,
 } from "@/components/app-shell"
 
@@ -39,82 +38,6 @@ type ConfirmData = {
   score: DecodedScore
   skinName: string | null
   notes: string
-}
-
-function Stat({
-  label,
-  value,
-  className,
-}: {
-  label: string
-  value: string
-  className?: string
-}) {
-  return (
-    <div
-      className={cn(
-        "flex flex-col gap-0.5 rounded-md bg-muted/50 px-2.5 py-2",
-        className
-      )}
-    >
-      <dt className="text-xs text-muted-foreground">{label}</dt>
-      <dd className="whitespace-nowrap text-sm font-medium">{value}</dd>
-    </div>
-  )
-}
-
-function ScoreStatsPanel({
-  score,
-  beatmapMaxCombo,
-}: {
-  score: ScoreStats
-  beatmapMaxCombo: number
-}) {
-  return (
-    <dl className="flex w-full flex-col gap-2">
-      <div className="flex gap-2">
-        <Stat label="Grade" value={score.rank} className="flex-1" />
-        <Stat
-          label="Score"
-          value={score.totalScore.toLocaleString()}
-          className="flex-1"
-        />
-        <Stat
-          label="Accuracy"
-          value={`${(score.accuracy * 100).toFixed(2)}%`}
-          className="flex-1"
-        />
-        <Stat
-          label="Combo"
-          value={`${score.maxCombo} / ${beatmapMaxCombo}`}
-          className="flex-1"
-        />
-        <Stat
-          label="Mods"
-          value={score.mods.join("") || "NM"}
-          className="flex-1"
-        />
-      </div>
-      <div className="flex divide-x overflow-hidden rounded-md border bg-muted/50">
-        {(
-          [
-            { label: "300", value: score.count300 },
-            { label: "100", value: score.count100 },
-            { label: "50", value: score.count50 },
-            { label: "Miss", value: score.countMiss },
-          ] as const
-        ).map((s) => (
-          <div
-            key={s.label}
-            className="flex flex-1 flex-col items-center gap-0.5 px-2 py-2"
-          >
-            <dt className="text-xs text-muted-foreground">{s.label}</dt>
-            <dd className="whitespace-nowrap text-sm font-medium">{s.value}</dd>
-          </div>
-        ))}
-      </div>
-    </dl>
-  )
 }
 
 function ReplaySubmitForm({
@@ -345,78 +268,16 @@ function EmptyState() {
   )
 }
 
-function ReplayCard({ replay }: { replay: Replay }) {
-  return (
-    <Tooltip>
-      <TooltipTrigger
-        render={<li className="flex items-stretch" />}
-      >
-        <div className="relative w-28 shrink-0 bg-muted/50">
-          {replay.beatmap.coverListUrl ? (
-            <Image
-              src={replay.beatmap.coverListUrl}
-              alt={`${replay.beatmap.artist} - ${replay.beatmap.title} cover`}
-              fill
-              unoptimized
-              className="object-cover"
-            />
-          ) : (
-            <div className="flex h-full items-center justify-center">
-              <IconFile className="size-4 text-muted-foreground" />
-            </div>
-          )}
-        </div>
-        <div className="flex min-w-0 flex-1 flex-col gap-0.5 px-4 py-3">
-          <div className="flex items-center gap-2">
-            <span className="min-w-0 truncate text-sm font-medium">
-              {replay.beatmap.artist} - {replay.beatmap.title} [
-              {replay.beatmap.version}]
-            </span>
-            <Badge variant="outline">
-              {replay.beatmap.starRating.toFixed(2)}★
-            </Badge>
-            {replay.score.maxCombo === replay.beatmap.maxCombo && (
-              <Badge variant="secondary">PFC</Badge>
-            )}
-          </div>
-          <p className="text-xs text-muted-foreground">
-            Score set by{" "}
-            <span className="font-medium text-foreground">
-              {replay.score.username}
-            </span>{" "}
-            on {replay.score.date.toLocaleDateString()}
-          </p>
-          <p className="text-xs text-muted-foreground">
-            Submitted on {new Date(replay.createdAt).toLocaleDateString()}
-          </p>
-          {replay.notes !== "" && (
-            <p className="text-sm text-muted-foreground">{replay.notes}</p>
-          )}
-        </div>
-      </TooltipTrigger>
-      <TooltipContent
-        side="top"
-        align="center"
-        hideArrow
-        className="w-fit max-w-none items-stretch gap-3 rounded-xl border bg-card px-4 py-3 text-foreground shadow-lg"
-      >
-        <ScoreStatsPanel
-          score={replay.score}
-          beatmapMaxCombo={replay.beatmap.maxCombo}
-        />
-      </TooltipContent>
-    </Tooltip>
-  )
-}
-
 export function ReplaysTab({
   replays,
   skins,
   onSubmit,
+  canSubmit,
 }: {
   replays: Replay[]
   skins: Skin[]
   onSubmit: (input: ReplayInput, file: File) => Promise<void>
+  canSubmit: boolean
 }) {
   const [open, setOpen] = useState(false)
 
@@ -426,24 +287,30 @@ export function ReplaysTab({
         <div className="flex flex-col gap-0.5">
           <h1 className="font-heading text-xl font-semibold">Replays</h1>
           <p className="text-sm text-muted-foreground">
-            All submitted replays will show here.
+            Replays you have submitted will show here.
           </p>
         </div>
-        <Dialog open={open} onOpenChange={setOpen}>
-          <DialogTrigger render={<Button />}>
-            <IconUpload />
-            Submit
-          </DialogTrigger>
-          <DialogContent className="w-fit min-w-[min(24rem,calc(100%-2rem))] max-w-[min(42rem,calc(100%-2rem))] py-8">
-            <ReplaySubmitForm
-              skins={skins}
-              onSubmit={async (input, file) => {
-                await onSubmit(input, file)
-                setOpen(false)
-              }}
-            />
-          </DialogContent>
-        </Dialog>
+        {canSubmit ? (
+          <Dialog open={open} onOpenChange={setOpen}>
+            <DialogTrigger render={<Button />}>
+              <IconUpload />
+              Submit
+            </DialogTrigger>
+            <DialogContent className="w-fit min-w-[min(24rem,calc(100%-2rem))] max-w-[min(42rem,calc(100%-2rem))] py-8">
+              <ReplaySubmitForm
+                skins={skins}
+                onSubmit={async (input, file) => {
+                  await onSubmit(input, file)
+                  setOpen(false)
+                }}
+              />
+            </DialogContent>
+          </Dialog>
+        ) : (
+          <p className="text-sm text-muted-foreground">
+            You are banned from submitting new replays.
+          </p>
+        )}
       </header>
 
       {replays.length === 0 ? (
@@ -451,7 +318,25 @@ export function ReplaysTab({
       ) : (
         <ul className="flex flex-col divide-y overflow-hidden rounded-xl bg-card shadow-xs ring-1 ring-foreground/10">
           {replays.map((replay) => (
-            <ReplayCard key={replay.id} replay={replay} />
+            <ReplayCard
+              key={replay.id}
+              replay={replay}
+              badges={
+                <>
+                  {replay.judgmentSummary.count > 0 && (
+                    <Badge variant="secondary">
+                      {replay.judgmentSummary.count}×{" "}
+                      {replay.judgmentSummary.average !== null
+                        ? replay.judgmentSummary.average.toFixed(2)
+                        : ""}
+                    </Badge>
+                  )}
+                  <Badge variant="outline">
+                    {replay.status === "render" ? "Render" : "Pool"}
+                  </Badge>
+                </>
+              }
+            />
           ))}
         </ul>
       )}

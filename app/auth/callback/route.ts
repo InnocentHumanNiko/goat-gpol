@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { cookies } from "next/headers"
 import { authorizeWithCode, getRedirectUri, getResourceOwner } from "@/lib/auth"
-import { upsertUser } from "@/lib/db"
+import { syncManagerRole, upsertUser } from "@/lib/db"
 import { createSessionCookie } from "@/lib/session"
 
 export const dynamic = "force-dynamic"
@@ -37,6 +37,7 @@ export async function GET(request: NextRequest) {
       refreshToken: api.refresh_token ?? null,
       tokenExpiresAt: api.expires.getTime(),
     })
+    syncManagerRole(user.id)
 
     await createSessionCookie(user.id)
   } catch {

@@ -3,12 +3,8 @@
 import { LogoutButton } from "@/components/logout-button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { cn } from "@/lib/utils"
+import { canAdmin, canJudge } from "@/lib/roles"
 import type { SessionUser, Tab } from "@/components/app-shell"
-
-const tabs: { id: Tab; label: string }[] = [
-  { id: "replays", label: "Replays" },
-  { id: "skins", label: "Skins" },
-]
 
 export function SiteNav({
   tab,
@@ -19,6 +15,17 @@ export function SiteNav({
   onTabChange: (tab: Tab) => void
   user: SessionUser
 }) {
+  const tabs: { id: Tab; label: string }[] = [
+    { id: "replays", label: "Replays" },
+    { id: "skins", label: "Skins" },
+  ]
+  if (canJudge(user.role)) {
+    tabs.push({ id: "judge", label: "Judge" }, { id: "render", label: "Render" })
+  }
+  if (canAdmin(user.role)) {
+    tabs.push({ id: "manage", label: "Manage" })
+  }
+
   return (
     <header className="sticky top-0 z-40 border-b bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="mx-auto flex h-14 w-full max-w-5xl items-center justify-between gap-4 px-4">

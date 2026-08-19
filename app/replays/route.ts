@@ -6,10 +6,12 @@ import {
   getReplayById,
   insertReplay,
   listReplays,
+  listReplaysByUser,
   replayRowToApi,
   updateReplayFilePath,
 } from "@/lib/db"
 import { getSessionUser } from "@/lib/session"
+import { canAdmin, canJudge } from "@/lib/roles"
 import type { ReplayMetadata } from "@/lib/replay-types"
 
 export const dynamic = "force-dynamic"
@@ -71,18 +73,41 @@ function parseReplayMetadata(raw: string): ReplayMetadata | null {
   }
 }
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   const user = await getSessionUser()
   if (!user) {
     return Response.json({ error: "unauthorized" }, { status: 401 })
   }
-  return Response.json(listReplays().map(replayRowToApi))
+  const scope = request.nextUrl.searchParams.get("scope") ?? "own"
+  if (scope === "own") {
+    return Response.json(
+      listReplaysByUser(user.osu_id).map((r) => replayRowToApi(r, user.osu_id)),
+    )
+  }
+  if (scope === "judge" || scope === "render") {
+    if (!canJudge(user.role)) {
+      return Response.json({ error: "forbidden" }, { status: 403 })
+    }
+    const rows = listReplays(scope === "render" ? "render" : "pool")
+    return Response.json(rows.map((r) => replayRowToApi(r, user.osu_id)))
+  }
+  if (scope === "all") {
+    if (!canAdmin(user.role)) {
+      return Response.json({ error: "forbidden" }, { status: 403 })
+    }
+    const rows = listReplays()
+    return Response.json(rows.map((r) => replayRowToApi(r, user.osu_id)))
+  }
+  return Response.json({ error: "invalid scope" }, { status: 400 })
 }
 
 export async function POST(request: NextRequest) {
   const user = await getSessionUser()
   if (!user) {
     return Response.json({ error: "unauthorized" }, { status: 401 })
+  }
+  if (user.banned_at !== null) {
+    return Response.json({ error: "banned" }, { status: 403 })
   }
   const form = await request.formData()
   const file = form.get("file")
@@ -118,5 +143,5 @@ export async function POST(request: NextRequest) {
   if (!row) {
     return Response.json({ error: "internal error" }, { status: 500 })
   }
-  return Response.json(replayRowToApi(row), { status: 201 })
+  return Response.json(replayRowToApi(row, user.osu_id), { status: 201 })
 }

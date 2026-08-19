@@ -1,6 +1,6 @@
 import { AppShell } from "@/components/app-shell"
 import { LoginPage } from "@/components/login-page"
-import { listReplays, replayRowToApi } from "@/lib/db"
+import { listReplaysByUser, listSkinsByUser, replayRowToApi } from "@/lib/db"
 import { getSessionUser } from "@/lib/session"
 
 export default async function HomePage({
@@ -22,8 +22,17 @@ export default async function HomePage({
         username: user.username,
         avatarUrl: user.avatar_url,
         countryCode: user.country_code,
+        role: user.role,
+        bannedAt: user.banned_at,
       }}
-      initialReplays={listReplays().map(replayRowToApi)}
+      initialReplays={listReplaysByUser(user.osu_id).map((r) =>
+        replayRowToApi(r, user.osu_id),
+      )}
+      initialSkins={listSkinsByUser(user.osu_id).map((skin) => ({
+        id: skin.id,
+        name: skin.name,
+        createdAt: skin.created_at,
+      }))}
     />
   )
 }

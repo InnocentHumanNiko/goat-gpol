@@ -19,16 +19,29 @@ import { Input } from "@/components/ui/input"
 import { IconPalette, IconUpload } from "@tabler/icons-react"
 import type { Skin } from "@/components/app-shell"
 
-function SkinUploadForm({ onUpload }: { onUpload: (name: string) => void }) {
+function SkinUploadForm({
+  onUpload,
+}: {
+  onUpload: (name: string) => Promise<void>
+}) {
   const [name, setName] = useState("")
   const [file, setFile] = useState<File | null>(null)
+  const [uploading, setUploading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
-  const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault()
-    if (!file || name.trim() === "") {
+    if (!file || name.trim() === "" || uploading) {
       return
     }
-    onUpload(name.trim())
+    setUploading(true)
+    setError(null)
+    try {
+      await onUpload(name.trim())
+    } catch {
+      setError("Could not upload the skin. Please try again.")
+      setUploading(false)
+    }
   }
 
   return (
@@ -61,11 +74,12 @@ function SkinUploadForm({ onUpload }: { onUpload: (name: string) => void }) {
             placeholder="e.g. vaxei skin edit"
           />
         </div>
+        {error && <p className="text-sm text-destructive">{error}</p>}
       </div>
       <DialogFooter>
         <DialogClose render={<Button variant="outline" />}>Cancel</DialogClose>
-        <Button type="submit" disabled={!file || name.trim() === ""}>
-          Upload skin
+        <Button type="submit" disabled={!file || name.trim() === "" || uploading}>
+          {uploading ? "Uploading…" : "Upload skin"}
         </Button>
       </DialogFooter>
     </form>
@@ -89,9 +103,11 @@ function EmptyState() {
 export function SkinsTab({
   skins,
   onUpload,
+  canSubmit,
 }: {
   skins: Skin[]
-  onUpload: (name: string) => void
+  onUpload: (name: string) => Promise<void>
+  canSubmit: boolean
 }) {
   const [open, setOpen] = useState(false)
 
@@ -104,20 +120,26 @@ export function SkinsTab({
             Skins you have uploaded to use in replay submissions.
           </p>
         </div>
-        <Dialog open={open} onOpenChange={setOpen}>
-          <DialogTrigger render={<Button />}>
-            <IconUpload />
-            Upload skin
-          </DialogTrigger>
-          <DialogContent>
-            <SkinUploadForm
-              onUpload={(name) => {
-                onUpload(name)
-                setOpen(false)
-              }}
-            />
-          </DialogContent>
-        </Dialog>
+        {canSubmit ? (
+          <Dialog open={open} onOpenChange={setOpen}>
+            <DialogTrigger render={<Button />}>
+              <IconUpload />
+              Upload skin
+            </DialogTrigger>
+            <DialogContent>
+              <SkinUploadForm
+                onUpload={async (name) => {
+                  await onUpload(name)
+                  setOpen(false)
+                }}
+              />
+            </DialogContent>
+          </Dialog>
+        ) : (
+          <p className="text-sm text-muted-foreground">
+            You are banned from uploading new skins.
+          </p>
+        )}
       </header>
 
       {skins.length === 0 ? (

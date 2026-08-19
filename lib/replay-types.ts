@@ -1,3 +1,7 @@
+export type Role = "basic" | "judge" | "admin" | "manager"
+
+export type ReplayStatus = "pool" | "render"
+
 export type BeatmapApi = {
   id: number
   title: string
@@ -40,4 +44,24 @@ export type ReplayApi = ReplayMetadata & {
   id: number
   createdAt: number
   submitter: { osuId: number; username: string }
+  status: ReplayStatus
+  myJudgment: { score: number; comment: string } | null
+  judgmentSummary: { count: number; average: number | null }
+}
+
+export type JudgmentApi = {
+  id: number
+  replayId: number
+  judgeOsuId: number
+  judgeUsername: string
+  score: number
+  comment: string
+  createdAt: number
+  updatedAt: number
+}
+
+export type SkinApi = {
+  id: number
+  name: string
+  createdAt: number
 }

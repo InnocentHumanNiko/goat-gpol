@@ -1,7 +1,12 @@
 import { Database } from "bun:sqlite"
 import { mkdirSync } from "node:fs"
 import path from "node:path"
-import type { ReplayApi } from "@/lib/replay-types"
+import type { ReplayApi, Role, ReplayStatus } from "@/lib/replay-types"
+import {
+  DEFAULT_JUDGE_SETTINGS,
+  statusFromJudgments,
+  type JudgeSettings,
+} from "@/lib/judging"
 
 export type UserRow = {
   osu_id: number
@@ -11,6 +16,8 @@ export type UserRow = {
   access_token: string
   refresh_token: string | null
   token_expires_at: number | null
+  role: Role
+  banned_at: number | null
   created_at: number
   updated_at: number
 }
@@ -36,6 +43,17 @@ export function getDb(): Database {
   return db
 }
 
+function columnExists(db: Database, table: string, column: string): boolean {
+  const rows = db.query(`PRAGMA table_info(${table})`).all() as { name: string }[]
+  return rows.some((r) => r.name === column)
+}
+
+function ensureColumn(db: Database, table: string, column: string, ddl: string) {
+  if (!columnExists(db, table, column)) {
+    db.exec(`ALTER TABLE ${table} ADD COLUMN ${ddl}`)
+  }
+}
+
 function migrate(db: Database) {
   db.exec(`
     CREATE TABLE IF NOT EXISTS users (
@@ -46,6 +64,8 @@ function migrate(db: Database) {
       access_token TEXT NOT NULL,
       refresh_token TEXT,
       token_expires_at INTEGER,
+      role TEXT NOT NULL DEFAULT 'basic',
+      banned_at INTEGER,
       created_at INTEGER NOT NULL,
       updated_at INTEGER NOT NULL
     );
@@ -64,6 +84,7 @@ function migrate(db: Database) {
       file_name TEXT NOT NULL,
       notes TEXT NOT NULL DEFAULT '',
       skin_name TEXT,
+      status TEXT NOT NULL DEFAULT 'pool',
       beatmap_checksum TEXT NOT NULL,
       beatmap_id INTEGER NOT NULL,
       beatmap_title TEXT NOT NULL,
@@ -90,11 +111,39 @@ function migrate(db: Database) {
       score_count_miss INTEGER NOT NULL,
       created_at INTEGER NOT NULL
     );
+
+    CREATE TABLE IF NOT EXISTS judgments (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      replay_id INTEGER NOT NULL REFERENCES replays(id) ON DELETE CASCADE,
+      judge_osu_id INTEGER NOT NULL REFERENCES users(osu_id) ON DELETE CASCADE,
+      score INTEGER NOT NULL CHECK(score BETWEEN 0 AND 5),
+      comment TEXT NOT NULL DEFAULT '',
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL,
+      UNIQUE(replay_id, judge_osu_id)
+    );
+
+    CREATE TABLE IF NOT EXISTS skins (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      osu_id INTEGER NOT NULL REFERENCES users(osu_id) ON DELETE CASCADE,
+      name TEXT NOT NULL,
+      created_at INTEGER NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS settings (
+      key TEXT PRIMARY KEY,
+      value TEXT NOT NULL
+    );
   `)
+  ensureColumn(db, "users", "role", "role TEXT NOT NULL DEFAULT 'basic'")
+  ensureColumn(db, "users", "banned_at", "banned_at INTEGER")
+  ensureColumn(db, "replays", "status", "status TEXT NOT NULL DEFAULT 'pool'")
   db.run("CREATE INDEX IF NOT EXISTS idx_sessions_osu_id ON sessions(osu_id)")
   db.run("CREATE INDEX IF NOT EXISTS idx_sessions_expires_at ON sessions(expires_at)")
   db.run("CREATE INDEX IF NOT EXISTS idx_replays_created_at ON replays(created_at DESC)")
   db.run("CREATE INDEX IF NOT EXISTS idx_replays_osu_id ON replays(osu_id)")
+  db.run("CREATE INDEX IF NOT EXISTS idx_judgments_replay_id ON judgments(replay_id)")
+  db.run("CREATE INDEX IF NOT EXISTS idx_skins_osu_id ON skins(osu_id)")
 }
 
 export type UpsertUserInput = {
@@ -110,8 +159,8 @@ export type UpsertUserInput = {
 export function upsertUser(input: UpsertUserInput) {
   const now = Date.now()
   getDb().run(
-    `INSERT INTO users (osu_id, username, avatar_url, country_code, access_token, refresh_token, token_expires_at, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `INSERT INTO users (osu_id, username, avatar_url, country_code, access_token, refresh_token, token_expires_at, role, banned_at, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, 'basic', NULL, ?, ?)
      ON CONFLICT(osu_id) DO UPDATE SET
        username = excluded.username,
        avatar_url = excluded.avatar_url,
@@ -140,6 +189,74 @@ export function getUserByOsuId(osuId: number): UserRow | null {
   ).get(osuId)
 }
 
+export function listUsers(): UserRow[] {
+  return getDb().query<UserRow, []>(
+    "SELECT * FROM users ORDER BY username COLLATE NOCASE ASC",
+  ).all()
+}
+
+export function syncManagerRole(osuId: number) {
+  const managerId = Number(process.env.MANAGER_USER_ID)
+  if (!Number.isInteger(managerId)) {
+    return
+  }
+  if (osuId === managerId) {
+    getDb().run("UPDATE users SET role = 'manager' WHERE osu_id = ?", [osuId])
+  } else {
+    getDb().run(
+      "UPDATE users SET role = 'basic' WHERE role = 'manager' AND osu_id != ?",
+      [managerId],
+    )
+  }
+}
+
+export function setUserRole(osuId: number, role: Role) {
+  getDb().run("UPDATE users SET role = ?, updated_at = ? WHERE osu_id = ?", [
+    role,
+    Date.now(),
+    osuId,
+  ])
+}
+
+export function setUserBanned(osuId: number, bannedAt: number | null) {
+  getDb().run("UPDATE users SET banned_at = ?, updated_at = ? WHERE osu_id = ?", [
+    bannedAt,
+    Date.now(),
+    osuId,
+  ])
+}
+
+export type SkinRow = {
+  id: number
+  osu_id: number
+  name: string
+  created_at: number
+}
+
+export function insertSkin(osuId: number, name: string): number {
+  const result = getDb().run(
+    "INSERT INTO skins (osu_id, name, created_at) VALUES (?, ?, ?)",
+    [osuId, name, Date.now()],
+  )
+  return Number(result.lastInsertRowid)
+}
+
+export function getSkinById(id: number): SkinRow | null {
+  return getDb().query<SkinRow, [number]>(
+    "SELECT * FROM skins WHERE id = ?",
+  ).get(id)
+}
+
+export function listSkinsByUser(osuId: number): SkinRow[] {
+  return getDb().query<SkinRow, [number]>(
+    "SELECT * FROM skins WHERE osu_id = ? ORDER BY created_at DESC",
+  ).all(osuId)
+}
+
+export function deleteSkin(id: number) {
+  getDb().run("DELETE FROM skins WHERE id = ?", [id])
+}
+
 export type ReplayRow = {
   id: number
   osu_id: number
@@ -147,6 +264,7 @@ export type ReplayRow = {
   file_name: string
   notes: string
   skin_name: string | null
+  status: ReplayStatus
   beatmap_checksum: string
   beatmap_id: number
   beatmap_title: string
@@ -214,7 +332,7 @@ export type NewReplay = {
 export function insertReplay(input: NewReplay): number {
   const result = getDb().run(
     `INSERT INTO replays (
-       osu_id, file_path, file_name, notes, skin_name,
+       osu_id, file_path, file_name, notes, skin_name, status,
        beatmap_checksum, beatmap_id, beatmap_title, beatmap_artist, beatmap_creator,
        beatmap_version, beatmap_star_rating, beatmap_max_combo, beatmap_url,
        beatmap_background_url, beatmap_cover_list_url,
@@ -223,7 +341,7 @@ export function insertReplay(input: NewReplay): number {
        score_count_geki, score_count_katu, score_count_300, score_count_100,
        score_count_50, score_count_miss,
        created_at
-     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+     ) VALUES (?, ?, ?, ?, ?, 'pool', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       input.osuId,
       "",
@@ -264,6 +382,14 @@ export function updateReplayFilePath(id: number, filePath: string) {
   getDb().run("UPDATE replays SET file_path = ? WHERE id = ?", [filePath, id])
 }
 
+export function updateReplayStatus(id: number, status: ReplayStatus) {
+  getDb().run("UPDATE replays SET status = ? WHERE id = ?", [status, id])
+}
+
+export function deleteReplayRow(id: number) {
+  getDb().run("DELETE FROM replays WHERE id = ?", [id])
+}
+
 export function getReplayById(id: number): ReplayWithSubmitter | null {
   return getDb().query<ReplayWithSubmitter, [number]>(
     `SELECT r.*, u.username AS submitter_username
@@ -273,7 +399,16 @@ export function getReplayById(id: number): ReplayWithSubmitter | null {
   ).get(id)
 }
 
-export function listReplays(): ReplayWithSubmitter[] {
+export function listReplays(status?: ReplayStatus): ReplayWithSubmitter[] {
+  if (status) {
+    return getDb().query<ReplayWithSubmitter, [string]>(
+      `SELECT r.*, u.username AS submitter_username
+       FROM replays r
+       JOIN users u ON u.osu_id = r.osu_id
+       WHERE r.status = ?
+       ORDER BY r.created_at DESC`,
+    ).all(status)
+  }
   return getDb().query<ReplayWithSubmitter, []>(
     `SELECT r.*, u.username AS submitter_username
      FROM replays r
@@ -282,7 +417,170 @@ export function listReplays(): ReplayWithSubmitter[] {
   ).all()
 }
 
-export function replayRowToApi(row: ReplayWithSubmitter): ReplayApi {
+export function listReplaysByUser(osuId: number): ReplayWithSubmitter[] {
+  return getDb().query<ReplayWithSubmitter, [number]>(
+    `SELECT r.*, u.username AS submitter_username
+     FROM replays r
+     JOIN users u ON u.osu_id = r.osu_id
+     WHERE r.osu_id = ?
+     ORDER BY r.created_at DESC`,
+  ).all(osuId)
+}
+
+export type JudgmentRow = {
+  id: number
+  replay_id: number
+  judge_osu_id: number
+  score: number
+  comment: string
+  created_at: number
+  updated_at: number
+}
+
+export type JudgmentWithJudge = JudgmentRow & { judge_username: string }
+
+export function listJudgments(replayId: number): JudgmentWithJudge[] {
+  return getDb().query<JudgmentWithJudge, [number]>(
+    `SELECT j.*, u.username AS judge_username
+     FROM judgments j
+     JOIN users u ON u.osu_id = j.judge_osu_id
+     WHERE j.replay_id = ?
+     ORDER BY j.created_at ASC`,
+  ).all(replayId)
+}
+
+export function getJudgment(
+  replayId: number,
+  judgeOsuId: number,
+): JudgmentRow | null {
+  return getDb().query<JudgmentRow, [number, number]>(
+    "SELECT * FROM judgments WHERE replay_id = ? AND judge_osu_id = ?",
+  ).get(replayId, judgeOsuId)
+}
+
+export function getJudgmentSummary(replayId: number): {
+  count: number
+  average: number | null
+} {
+  const row = getDb().query<{ count: number; avg: number | null }, [number]>(
+    "SELECT COUNT(*) AS count, AVG(score) AS avg FROM judgments WHERE replay_id = ?",
+  ).get(replayId)
+  return { count: row?.count ?? 0, average: row?.avg ?? null }
+}
+
+export function getJudgmentScores(replayId: number): number[] {
+  return getDb().query<{ score: number }, [number]>(
+    "SELECT score FROM judgments WHERE replay_id = ?",
+  ).all(replayId).map((r) => r.score)
+}
+
+export function getJudgeSettings(): JudgeSettings {
+  const rows = getDb().query<{ key: string; value: string }, []>(
+    "SELECT key, value FROM settings",
+  ).all()
+  const map = new Map(rows.map((r) => [r.key, r.value]))
+  const num = (key: string, fallback: number) => {
+    const value = Number(map.get(key))
+    return Number.isFinite(value) ? value : fallback
+  }
+  return {
+    thresholdScore: num(
+      "thresholdScore",
+      DEFAULT_JUDGE_SETTINGS.thresholdScore,
+    ),
+    thresholdPercent: num(
+      "thresholdPercent",
+      DEFAULT_JUDGE_SETTINGS.thresholdPercent,
+    ),
+  }
+}
+
+export function updateJudgeSettings(partial: Partial<JudgeSettings>) {
+  const entries: [string, number][] = []
+  if (partial.thresholdScore !== undefined) {
+    entries.push(["thresholdScore", partial.thresholdScore])
+  }
+  if (partial.thresholdPercent !== undefined) {
+    entries.push(["thresholdPercent", partial.thresholdPercent])
+  }
+  for (const [key, value] of entries) {
+    getDb().run(
+      `INSERT INTO settings (key, value) VALUES (?, ?)
+       ON CONFLICT(key) DO UPDATE SET value = excluded.value`,
+      [key, String(value)],
+    )
+  }
+}
+
+export function countEligibleJudges(): number {
+  const row = getDb().query<{ count: number }, []>(
+    "SELECT COUNT(*) AS count FROM users WHERE role IN ('judge', 'admin', 'manager')",
+  ).get()
+  return row?.count ?? 0
+}
+
+export function recomputeReplayStatus(replayId: number) {
+  updateReplayStatus(
+    replayId,
+    statusFromJudgments(
+      getJudgmentScores(replayId),
+      countEligibleJudges(),
+      getJudgeSettings(),
+    ),
+  )
+}
+
+export function recomputeAllReplayStatuses() {
+  const rows = getDb().query<{ id: number }, []>(
+    "SELECT id FROM replays",
+  ).all()
+  for (const row of rows) {
+    recomputeReplayStatus(row.id)
+  }
+}
+
+export function upsertJudgment(
+  replayId: number,
+  judgeOsuId: number,
+  score: number,
+  comment: string,
+) {
+  const now = Date.now()
+  getDb().run(
+    `INSERT INTO judgments (replay_id, judge_osu_id, score, comment, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?)
+     ON CONFLICT(replay_id, judge_osu_id) DO UPDATE SET
+       score = excluded.score,
+       comment = excluded.comment,
+       updated_at = excluded.updated_at`,
+    [replayId, judgeOsuId, score, comment, now, now],
+  )
+  recomputeReplayStatus(replayId)
+}
+
+export function updateJudgmentById(
+  id: number,
+  replayId: number,
+  score: number,
+  comment: string,
+) {
+  getDb().run(
+    "UPDATE judgments SET score = ?, comment = ?, updated_at = ? WHERE id = ?",
+    [score, comment, Date.now(), id],
+  )
+  recomputeReplayStatus(replayId)
+}
+
+export function deleteJudgmentById(id: number, replayId: number) {
+  getDb().run("DELETE FROM judgments WHERE id = ?", [id])
+  recomputeReplayStatus(replayId)
+}
+
+export function replayRowToApi(
+  row: ReplayWithSubmitter,
+  viewerOsuId: number,
+): ReplayApi {
+  const mine = getJudgment(row.id, viewerOsuId)
   return {
     id: row.id,
     createdAt: row.created_at,
@@ -290,6 +588,7 @@ export function replayRowToApi(row: ReplayWithSubmitter): ReplayApi {
     skinName: row.skin_name,
     notes: row.notes,
     beatmapChecksum: row.beatmap_checksum,
+    status: row.status,
     beatmap: {
       id: row.beatmap_id,
       title: row.beatmap_title,
@@ -317,6 +616,16 @@ export function replayRowToApi(row: ReplayWithSubmitter): ReplayApi {
       count50: row.score_count_50,
       countMiss: row.score_count_miss,
     },
+    myJudgment: mine ? { score: mine.score, comment: mine.comment } : null,
+    judgmentSummary: getJudgmentSummary(row.id),
     submitter: { osuId: row.osu_id, username: row.submitter_username },
   }
+}
+
+export function replayToApiForViewer(
+  id: number,
+  viewerOsuId: number,
+): ReplayApi | null {
+  const row = getReplayById(id)
+  return row ? replayRowToApi(row, viewerOsuId) : null
 }
