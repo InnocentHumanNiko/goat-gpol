@@ -15,9 +15,9 @@ export function SiteNav({
   onTabChange: (tab: Tab) => void
   user: SessionUser
 }) {
-  const tabs: { id: Tab; label: string }[] = [
+  const tabs: { id: Tab; label: string; disabled?: boolean }[] = [
     { id: "replays", label: "Replays" },
-    { id: "skins", label: "Skins" },
+    { id: "skins", label: "Skins", disabled: true },
   ]
   if (canJudge(user.role)) {
     tabs.push({ id: "judge", label: "Judge" }, { id: "render", label: "Render" })
@@ -35,10 +35,11 @@ export function SiteNav({
             <button
               key={t.id}
               type="button"
+              disabled={t.disabled}
               onClick={() => onTabChange(t.id)}
               aria-pressed={tab === t.id}
               className={cn(
-                "rounded-full px-4 py-1.5 text-sm font-medium transition-colors",
+                "rounded-full px-4 py-1.5 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50",
                 tab === t.id
                   ? "bg-background text-foreground shadow-xs"
                   : "text-muted-foreground hover:text-foreground"
