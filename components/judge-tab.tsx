@@ -17,7 +17,7 @@ import {
 } from "@/components/ui/dialog"
 import { ReplayCard } from "@/components/replay-card"
 import { Textarea } from "@/components/ui/textarea"
-import { IconDownload, IconScale } from "@tabler/icons-react"
+import { IconCheck, IconDownload, IconScale } from "@tabler/icons-react"
 import { replayFromApi, type Replay } from "@/components/app-shell"
 import type { ReplayApi } from "@/lib/replay-types"
 
@@ -206,12 +206,10 @@ export function JudgeTab() {
               replay={replay}
               badges={
                 replay.myJudgment ? (
-                  <Badge variant="secondary">
-                    My score: {replay.myJudgment.score}
+                  <Badge variant="secondary" aria-label="Voted">
+                    <IconCheck className="h-3.5 w-3.5" />
                   </Badge>
-                ) : (
-                  <Badge variant="outline">Unjudged</Badge>
-                )
+                ) : undefined
               }
               actions={
                 <>
