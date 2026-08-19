@@ -9,6 +9,7 @@
         "@tabler/icons-react": "^3.46.0",
         "class-variance-authority": "^0.7.1",
         "clsx": "^2.1.1",
+        "lzma-js-simple-v2": "^1.2.3",
         "next": "16.2.6",
         "next-themes": "^0.4.6",
         "osu-api-v2-js": "^3.0.5",
