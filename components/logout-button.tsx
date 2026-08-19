@@ -10,7 +10,7 @@ export function LogoutButton() {
 
   const handleLogout = useCallback(async () => {
     setLoading(true)
-    await fetch("/api/auth/logout", { method: "POST" })
+    await fetch("/auth/logout", { method: "POST" })
     router.replace("/")
     router.refresh()
   }, [router])
