@@ -24,14 +24,18 @@ function getClientSecret(): string {
   return secret
 }
 
-export function getRedirectUri(origin: string): string {
-  return process.env.OSU_REDIRECT_URI ?? new URL("/auth/callback", origin).toString()
+export function getAppOrigin(requestOrigin: string): string {
+  return process.env.BASE_URL ?? requestOrigin
 }
 
-export function buildAuthorizationUrl(origin: string, state: string): string {
+export function getRedirectUri(): string {
+  return new URL("/auth/callback", process.env.BASE_URL).toString()
+}
+
+export function buildAuthorizationUrl(state: string): string {
   const url = osu.generateAuthorizationURL(
     getClientId(),
-    getRedirectUri(origin),
+    getRedirectUri(),
     OAUTH_SCOPES,
   )
   return `${url}&state=${encodeURIComponent(state)}`

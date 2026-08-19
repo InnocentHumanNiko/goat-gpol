@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { cookies } from "next/headers"
-import { authorizeWithCode, getRedirectUri, getResourceOwner } from "@/lib/auth"
+import { authorizeWithCode, getAppOrigin, getRedirectUri, getResourceOwner } from "@/lib/auth"
 import { syncManagerRole, upsertUser } from "@/lib/db"
 import { createSessionCookie } from "@/lib/session"
 
@@ -16,7 +16,7 @@ export async function GET(request: NextRequest) {
   const expectedState = cookieStore.get("osu_oauth_state")?.value
   cookieStore.delete("osu_oauth_state")
 
-  const home = () => new URL("/", request.url)
+  const home = () => new URL("/", getAppOrigin(request.nextUrl.origin))
 
   if (error || !code || !state || state !== expectedState) {
     const redirect = home()
@@ -25,7 +25,7 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const api = await authorizeWithCode(code, getRedirectUri(request.nextUrl.origin))
+    const api = await authorizeWithCode(code, getRedirectUri())
     const user = await getResourceOwner(api)
 
     upsertUser({
