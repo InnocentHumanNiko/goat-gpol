@@ -1,5 +1,6 @@
 import { AppShell } from "@/components/app-shell"
 import { LoginPage } from "@/components/login-page"
+import { listReplays, replayRowToApi } from "@/lib/db"
 import { getSessionUser } from "@/lib/session"
 
 export default async function HomePage({
@@ -22,6 +23,7 @@ export default async function HomePage({
         avatarUrl: user.avatar_url,
         countryCode: user.country_code,
       }}
+      initialReplays={listReplays().map(replayRowToApi)}
     />
   )
 }

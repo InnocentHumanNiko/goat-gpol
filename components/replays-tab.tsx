@@ -32,7 +32,9 @@ import type {
 } from "@/components/app-shell"
 
 type ConfirmData = {
+  file: File
   fileName: string
+  beatmapChecksum: string
   beatmap: BeatmapInfo
   score: DecodedScore
   skinName: string | null
@@ -120,7 +122,7 @@ function ReplaySubmitForm({
   onSubmit,
 }: {
   skins: Skin[]
-  onSubmit: (input: ReplayInput) => void
+  onSubmit: (input: ReplayInput, file: File) => Promise<void>
 }) {
   const [file, setFile] = useState<File | null>(null)
   const [skinId, setSkinId] = useState("")
@@ -128,6 +130,8 @@ function ReplaySubmitForm({
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [confirm, setConfirm] = useState<ConfirmData | null>(null)
+  const [submitting, setSubmitting] = useState(false)
+  const [submitError, setSubmitError] = useState<string | null>(null)
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault()
@@ -146,7 +150,9 @@ function ReplaySubmitForm({
       }
       const beatmap = (await res.json()) as BeatmapInfo
       setConfirm({
+        file,
         fileName: file.name,
+        beatmapChecksum: score.beatmapHash,
         beatmap,
         score,
         skinName: skins.find((s) => s.id === Number(skinId))?.name ?? null,
@@ -160,6 +166,30 @@ function ReplaySubmitForm({
       )
     } finally {
       setBusy(false)
+    }
+  }
+
+  const handleConfirmSubmit = async () => {
+    if (!confirm || submitting) {
+      return
+    }
+    setSubmitting(true)
+    setSubmitError(null)
+    try {
+      await onSubmit(
+        {
+          fileName: confirm.fileName,
+          skinName: confirm.skinName,
+          notes: confirm.notes,
+          beatmapChecksum: confirm.beatmapChecksum,
+          beatmap: confirm.beatmap,
+          score: confirm.score,
+        },
+        confirm.file,
+      )
+    } catch {
+      setSubmitError("Could not submit the replay. Please try again.")
+      setSubmitting(false)
     }
   }
 
@@ -232,21 +262,13 @@ function ReplaySubmitForm({
           <Button variant="outline" onClick={() => setConfirm(null)}>
             Back
           </Button>
-          <DialogClose
-            render={<Button />}
-            onClick={() =>
-              onSubmit({
-                fileName: confirm.fileName,
-                skinName: confirm.skinName,
-                notes: confirm.notes,
-                beatmap: confirm.beatmap,
-                score: confirm.score,
-              })
-            }
-          >
-            Submit replay
-          </DialogClose>
+          <Button onClick={handleConfirmSubmit} disabled={submitting}>
+            {submitting ? "Submitting…" : "Submit replay"}
+          </Button>
         </DialogFooter>
+        {submitError && (
+          <p className="text-sm text-destructive">{submitError}</p>
+        )}
       </div>
     )
   }
@@ -394,7 +416,7 @@ export function ReplaysTab({
 }: {
   replays: Replay[]
   skins: Skin[]
-  onSubmit: (input: ReplayInput) => void
+  onSubmit: (input: ReplayInput, file: File) => Promise<void>
 }) {
   const [open, setOpen] = useState(false)
 
@@ -415,8 +437,8 @@ export function ReplaysTab({
           <DialogContent className="w-fit min-w-[min(24rem,calc(100%-2rem))] max-w-[min(42rem,calc(100%-2rem))] py-8">
             <ReplaySubmitForm
               skins={skins}
-              onSubmit={(input) => {
-                onSubmit(input)
+              onSubmit={async (input, file) => {
+                await onSubmit(input, file)
                 setOpen(false)
               }}
             />
