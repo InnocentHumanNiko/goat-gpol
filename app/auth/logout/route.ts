@@ -1,9 +1,8 @@
-import { NextRequest, NextResponse } from "next/server"
 import { deleteSession } from "@/lib/session"
 
 export const dynamic = "force-dynamic"
 
-export async function POST(request: NextRequest) {
+export async function POST() {
   await deleteSession()
-  return NextResponse.redirect(new URL("/", request.url))
+  return new Response(null, { status: 204 })
 }
