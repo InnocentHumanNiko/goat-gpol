@@ -89,8 +89,11 @@ export async function PATCH(request: NextRequest) {
     if (target.role === "manager") {
       return Response.json({ error: "manager level cannot be changed" }, { status: 403 })
     }
-    if ((role === "admin" || target.role === "admin") && !isManager(actor.role)) {
-      return Response.json({ error: "only the manager can change admin level" }, { status: 403 })
+    if (target.role === "admin" && !isManager(actor.role)) {
+      return Response.json(
+        { error: "only the manager can change an admin's role" },
+        { status: 403 },
+      )
     }
     nextRole = role as Role
   }
@@ -98,6 +101,12 @@ export async function PATCH(request: NextRequest) {
   if (body.banned !== undefined) {
     if (target.role === "manager") {
       return Response.json({ error: "manager cannot be banned" }, { status: 403 })
+    }
+    if (target.role === "admin" && !isManager(actor.role)) {
+      return Response.json(
+        { error: "only the manager can ban an admin" },
+        { status: 403 },
+      )
     }
     nextBannedAt = body.banned ? Date.now() : null
   }
