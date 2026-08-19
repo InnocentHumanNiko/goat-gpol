@@ -4,6 +4,7 @@ import {
   deleteJudgmentById,
   getJudgment,
   getReplayById,
+  judgmentToApi,
   listJudgments,
   replayToApiForViewer,
   updateJudgmentById,
@@ -50,7 +51,7 @@ export async function GET(
   if (!replay) {
     return Response.json({ error: "not found" }, { status: 404 })
   }
-  return Response.json(listJudgments(replay.id))
+  return Response.json(listJudgments(replay.id).map(judgmentToApi))
 }
 
 export async function PUT(
@@ -106,7 +107,7 @@ export async function PATCH(
     return Response.json({ error: "invalid score or comment" }, { status: 400 })
   }
   updateJudgmentById(judgment.id, replay.id, input.score, input.comment)
-  return Response.json(listJudgments(replay.id))
+  return Response.json(listJudgments(replay.id).map(judgmentToApi))
 }
 
 export async function DELETE(

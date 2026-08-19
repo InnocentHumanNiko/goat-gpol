@@ -15,6 +15,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog"
 import { ReplayCard } from "@/components/replay-card"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { IconChartBar, IconDownload } from "@tabler/icons-react"
 import { replayFromApi, type Replay } from "@/components/app-shell"
 import type { JudgmentApi, ReplayApi } from "@/lib/replay-types"
@@ -84,8 +85,19 @@ function VotingStatsDialog({ replay }: { replay: Replay }) {
             {judgments.map((judgment) => (
               <li key={judgment.id} className="flex flex-col gap-1 px-3 py-2">
                 <div className="flex items-center justify-between gap-2">
-                  <span className="truncate text-sm font-medium">
-                    {judgment.judgeUsername}
+                  <span className="flex min-w-0 items-center gap-2">
+                    <Avatar size="sm">
+                      <AvatarImage
+                        src={judgment.judgeAvatarUrl}
+                        alt={`${judgment.judgeUsername} avatar`}
+                      />
+                      <AvatarFallback>
+                        {judgment.judgeUsername.slice(0, 1).toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+                    <span className="truncate text-sm font-medium">
+                      {judgment.judgeUsername}
+                    </span>
                   </span>
                   <span className="text-sm font-medium tabular-nums">
                     {judgment.score.toFixed(2)}

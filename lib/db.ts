@@ -1,7 +1,12 @@
 import { Database } from "bun:sqlite"
 import { mkdirSync } from "node:fs"
 import path from "node:path"
-import type { ReplayApi, Role, ReplayStatus } from "@/lib/replay-types"
+import type {
+  JudgmentApi,
+  ReplayApi,
+  Role,
+  ReplayStatus,
+} from "@/lib/replay-types"
 import {
   DEFAULT_JUDGE_SETTINGS,
   statusFromJudgments,
@@ -469,16 +474,33 @@ export type JudgmentRow = {
   updated_at: number
 }
 
-export type JudgmentWithJudge = JudgmentRow & { judge_username: string }
+export type JudgmentWithJudge = JudgmentRow & {
+  judge_username: string
+  judge_avatar_url: string
+}
 
 export function listJudgments(replayId: number): JudgmentWithJudge[] {
   return getDb().query<JudgmentWithJudge, [number]>(
-    `SELECT j.*, u.username AS judge_username
+    `SELECT j.*, u.username AS judge_username, u.avatar_url AS judge_avatar_url
      FROM judgments j
      JOIN users u ON u.osu_id = j.judge_osu_id
      WHERE j.replay_id = ?
      ORDER BY j.created_at ASC`,
   ).all(replayId)
+}
+
+export function judgmentToApi(judgment: JudgmentWithJudge): JudgmentApi {
+  return {
+    id: judgment.id,
+    replayId: judgment.replay_id,
+    judgeOsuId: judgment.judge_osu_id,
+    judgeUsername: judgment.judge_username,
+    judgeAvatarUrl: judgment.judge_avatar_url,
+    score: judgment.score,
+    comment: judgment.comment,
+    createdAt: judgment.created_at,
+    updatedAt: judgment.updated_at,
+  }
 }
 
 export function getJudgment(

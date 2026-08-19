@@ -55,6 +55,7 @@ export type JudgmentApi = {
   replayId: number
   judgeOsuId: number
   judgeUsername: string
+  judgeAvatarUrl: string
   score: number
   comment: string
   createdAt: number

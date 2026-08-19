@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input"
 import { ReplayCard } from "@/components/replay-card"
 import { Select } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { IconChevronDown, IconChevronUp } from "@tabler/icons-react"
 import { isManager } from "@/lib/roles"
 import {
@@ -107,8 +108,19 @@ function JudgmentEditRow({
   return (
     <div className="flex flex-col gap-2 rounded-md border px-3 py-2">
       <div className="flex items-center justify-between gap-2">
-        <span className="truncate text-sm font-medium">
-          {judgment.judgeUsername}
+        <span className="flex min-w-0 items-center gap-2">
+          <Avatar size="sm">
+            <AvatarImage
+              src={judgment.judgeAvatarUrl}
+              alt={`${judgment.judgeUsername} avatar`}
+            />
+            <AvatarFallback>
+              {judgment.judgeUsername.slice(0, 1).toUpperCase()}
+            </AvatarFallback>
+          </Avatar>
+          <span className="truncate text-sm font-medium">
+            {judgment.judgeUsername}
+          </span>
         </span>
         {!editing ? (
           <div className="flex shrink-0 items-center gap-2">
