@@ -21,11 +21,11 @@ import type { Skin } from "@/components/app-shell"
 
 function SkinUploadForm({ onUpload }: { onUpload: (name: string) => void }) {
   const [name, setName] = useState("")
-  const [fileName, setFileName] = useState<string | null>(null)
+  const [file, setFile] = useState<File | null>(null)
 
   const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault()
-    if (!fileName || name.trim() === "") {
+    if (!file || name.trim() === "") {
       return
     }
     onUpload(name.trim())
@@ -47,7 +47,7 @@ function SkinUploadForm({ onUpload }: { onUpload: (name: string) => void }) {
             accept=".osk"
             label="Choose a .osk skin"
             hint="or drag and drop it here"
-            onFileChange={setFileName}
+            onFileChange={setFile}
           />
         </div>
         <div className="flex flex-col gap-1.5">
@@ -64,7 +64,7 @@ function SkinUploadForm({ onUpload }: { onUpload: (name: string) => void }) {
       </div>
       <DialogFooter>
         <DialogClose render={<Button variant="outline" />}>Cancel</DialogClose>
-        <Button type="submit" disabled={!fileName || name.trim() === ""}>
+        <Button type="submit" disabled={!file || name.trim() === ""}>
           Upload skin
         </Button>
       </DialogFooter>

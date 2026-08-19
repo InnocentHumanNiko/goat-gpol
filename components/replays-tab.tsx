@@ -1,5 +1,6 @@
 "use client"
 
+import Image from "next/image"
 import { useState, type FormEvent } from "react"
 
 import { Badge } from "@/components/ui/badge"
@@ -15,11 +16,49 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { FilePicker } from "@/components/file-picker"
 import { Select } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
-import { IconFile, IconUpload } from "@tabler/icons-react"
-import type { Replay, ReplayInput, Skin } from "@/components/app-shell"
+import { IconExternalLink, IconFile, IconUpload } from "@tabler/icons-react"
+import { decodeReplayFile, type DecodedScore } from "@/lib/replay-decode"
+import { cn } from "@/lib/utils"
+import type {
+  BeatmapInfo,
+  Replay,
+  ReplayInput,
+  Skin,
+} from "@/components/app-shell"
+
+type ConfirmData = {
+  fileName: string
+  beatmap: BeatmapInfo
+  score: DecodedScore
+  skinName: string | null
+  notes: string
+}
+
+function Stat({
+  label,
+  value,
+  className,
+}: {
+  label: string
+  value: string
+  className?: string
+}) {
+  return (
+    <div
+      className={cn(
+        "flex flex-col gap-0.5 rounded-md bg-muted/50 px-2.5 py-2",
+        className
+      )}
+    >
+      <dt className="text-xs text-muted-foreground">{label}</dt>
+      <dd className="whitespace-nowrap text-sm font-medium">{value}</dd>
+    </div>
+  )
+}
 
 function ReplaySubmitForm({
   skins,
@@ -28,20 +67,175 @@ function ReplaySubmitForm({
   skins: Skin[]
   onSubmit: (input: ReplayInput) => void
 }) {
-  const [fileName, setFileName] = useState<string | null>(null)
+  const [file, setFile] = useState<File | null>(null)
   const [skinId, setSkinId] = useState("")
   const [notes, setNotes] = useState("")
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [confirm, setConfirm] = useState<ConfirmData | null>(null)
 
-  const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault()
-    if (!fileName) {
+    if (!file || busy) {
       return
     }
-    onSubmit({
-      fileName,
-      skinName: skins.find((s) => s.id === Number(skinId))?.name ?? null,
-      notes: notes.trim(),
-    })
+    setBusy(true)
+    setError(null)
+    try {
+      const score = await decodeReplayFile(file)
+      const res = await fetch(
+        `/beatmap/lookup?checksum=${encodeURIComponent(score.beatmapHash)}`,
+      )
+      if (!res.ok) {
+        throw new Error("beatmap-lookup-failed")
+      }
+      const beatmap = (await res.json()) as BeatmapInfo
+      setConfirm({
+        fileName: file.name,
+        beatmap,
+        score,
+        skinName: skins.find((s) => s.id === Number(skinId))?.name ?? null,
+        notes: notes.trim(),
+      })
+    } catch (err) {
+      setError(
+        err instanceof Error && err.message === "beatmap-lookup-failed"
+          ? "Could not find the beatmap for this replay. It may have been deleted or the replay is too old."
+          : "That file could not be decoded as an osu! replay.",
+      )
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  if (confirm) {
+    const { beatmap, score, skinName, notes: confirmNotes } = confirm
+    return (
+      <div className="flex flex-col gap-5">
+        <div className="relative -mx-6 -mt-6 h-40 w-[calc(100%+3rem)] overflow-hidden rounded-t-xl">
+          <Image
+            src={beatmap.backgroundUrl}
+            alt={`${beatmap.artist} - ${beatmap.title} background`}
+            fill
+            unoptimized
+            className="object-cover"
+          />
+        </div>
+        <DialogHeader>
+          <DialogDescription className="text-xs">
+            Mapped by {beatmap.creator}
+          </DialogDescription>
+          <div className="flex flex-wrap items-center gap-2">
+            <DialogTitle className="text-lg">
+              {beatmap.artist} - {beatmap.title} [{beatmap.version}]
+            </DialogTitle>
+            <Badge variant="secondary">
+              {beatmap.starRating.toFixed(2)}★
+            </Badge>
+            <Tooltip>
+              <TooltipTrigger
+                render={
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    render={
+                      <a
+                        href={beatmap.url}
+                        target="_blank"
+                        rel="noreferrer"
+                      />
+                    }
+                  />
+                }
+              >
+                <IconExternalLink />
+                <span className="sr-only">View beatmap</span>
+              </TooltipTrigger>
+              <TooltipContent>View beatmap</TooltipContent>
+            </Tooltip>
+          </div>
+          <DialogDescription>
+            Score set by {score.username} on {score.date.toLocaleDateString()}
+          </DialogDescription>
+        </DialogHeader>
+        <div className="flex flex-col gap-3">
+          <dl className="flex w-full flex-col gap-2">
+            <div className="flex gap-2">
+              <Stat label="Grade" value={score.rank} className="flex-1" />
+              <Stat
+                label="Score"
+                value={score.totalScore.toLocaleString()}
+                className="flex-1"
+              />
+              <Stat
+                label="Accuracy"
+                value={`${(score.accuracy * 100).toFixed(2)}%`}
+                className="flex-1"
+              />
+              <Stat
+                label="Combo"
+                value={`${score.maxCombo} / ${beatmap.maxCombo}`}
+                className="flex-1"
+              />
+              <Stat
+                label="Mods"
+                value={score.mods.join("") || "NM"}
+                className="flex-1"
+              />
+            </div>
+            <div className="flex divide-x overflow-hidden rounded-md border bg-muted/50">
+              {(
+                [
+                  { label: "300", value: score.count300 },
+                  { label: "100", value: score.count100 },
+                  { label: "50", value: score.count50 },
+                  { label: "Miss", value: score.countMiss },
+                ] as const
+              ).map((s) => (
+                <div
+                  key={s.label}
+                  className="flex flex-1 flex-col items-center gap-0.5 px-2 py-2"
+                >
+<dt className="text-xs text-muted-foreground">{s.label}</dt>
+                    <dd className="whitespace-nowrap text-sm font-medium">{s.value}</dd>
+                </div>
+              ))}
+            </div>
+          </dl>
+          {(skinName || confirmNotes !== "") && (
+            <div className="flex flex-col gap-1 rounded-md border px-3 py-2 text-sm">
+              {skinName && (
+                <p className="text-muted-foreground">
+                  Skin: <span className="font-medium text-foreground">{skinName}</span>
+                </p>
+              )}
+              {confirmNotes !== "" && (
+                <p className="text-muted-foreground">{confirmNotes}</p>
+              )}
+            </div>
+          )}
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => setConfirm(null)}>
+            Back
+          </Button>
+          <DialogClose
+            render={<Button />}
+            onClick={() =>
+              onSubmit({
+                fileName: confirm.fileName,
+                skinName: confirm.skinName,
+                notes: confirm.notes,
+                beatmap: confirm.beatmap,
+                score: confirm.score,
+              })
+            }
+          >
+            Submit replay
+          </DialogClose>
+        </DialogFooter>
+      </div>
+    )
   }
 
   return (
@@ -59,7 +253,7 @@ function ReplaySubmitForm({
             accept=".osr"
             label="Choose a .osr replay"
             hint="or drag and drop it here"
-            onFileChange={setFileName}
+            onFileChange={setFile}
           />
         </div>
         <div className="flex flex-col gap-1.5">
@@ -98,11 +292,15 @@ function ReplaySubmitForm({
             placeholder="e.g. the slider velocity here is unhinged and the aim is questionable…"
           />
         </div>
+        {error && <p className="text-sm text-destructive">{error}</p>}
+        {busy && (
+          <p className="text-sm text-muted-foreground">Decoding replay…</p>
+        )}
       </div>
       <DialogFooter>
         <DialogClose render={<Button variant="outline" />}>Cancel</DialogClose>
-        <Button type="submit" disabled={!fileName}>
-          Submit replay
+        <Button type="submit" disabled={!file || busy}>
+          Continue
         </Button>
       </DialogFooter>
     </form>
@@ -148,7 +346,7 @@ export function ReplaysTab({
             <IconUpload />
             Submit replay
           </DialogTrigger>
-          <DialogContent>
+          <DialogContent className="w-fit min-w-[min(24rem,calc(100%-2rem))] max-w-[min(42rem,calc(100%-2rem))] py-8">
             <ReplaySubmitForm
               skins={skins}
               onSubmit={(input) => {
@@ -182,6 +380,10 @@ export function ReplaysTab({
                   </span>
                 </div>
               </div>
+              <p className="pl-6 text-sm text-muted-foreground">
+                {replay.beatmap.artist} - {replay.beatmap.title} [
+                {replay.beatmap.version}]
+              </p>
               {replay.notes !== "" && (
                 <p className="pl-6 text-sm text-muted-foreground">
                   {replay.notes}

@@ -13,16 +13,15 @@ export function FilePicker({
   accept: string
   label: string
   hint: string
-  onFileChange?: (fileName: string | null) => void
+  onFileChange?: (file: File | null) => void
 }) {
   const inputRef = useRef<HTMLInputElement>(null)
   const [fileName, setFileName] = useState<string | null>(null)
   const [dragging, setDragging] = useState(false)
 
   const selectFile = (file: File | null) => {
-    const name = file?.name ?? null
-    setFileName(name)
-    onFileChange?.(name)
+    setFileName(file?.name ?? null)
+    onFileChange?.(file)
   }
 
   const handleDrop = (e: DragEvent<HTMLButtonElement>) => {

@@ -21,10 +21,36 @@ export type Skin = {
   createdAt: number
 }
 
+export type BeatmapInfo = {
+  id: number
+  title: string
+  artist: string
+  creator: string
+  version: string
+  starRating: number
+  maxCombo: number
+  url: string
+  backgroundUrl: string
+}
+
+export type ScoreStats = {
+  maxCombo: number
+  accuracy: number
+  mods: string[]
+  countGeki: number
+  countKatu: number
+  count300: number
+  count100: number
+  count50: number
+  countMiss: number
+}
+
 export type ReplayInput = {
   fileName: string
   skinName: string | null
   notes: string
+  beatmap: BeatmapInfo
+  score: ScoreStats
 }
 
 export type Replay = ReplayInput & {
