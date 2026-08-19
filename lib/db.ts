@@ -39,6 +39,7 @@ export function getDb(): Database {
     db.exec("PRAGMA journal_mode = WAL")
     db.exec("PRAGMA foreign_keys = ON")
     migrate(db)
+    syncManagerRoleAtStartup()
   }
   return db
 }
@@ -199,13 +200,29 @@ export function listUsers(): UserRow[] {
   ).all()
 }
 
+function applyManagerRole(managerId: number) {
+  getDb().run("UPDATE users SET role = 'manager' WHERE osu_id = ?", [managerId])
+  getDb().run(
+    "UPDATE users SET role = 'basic' WHERE role = 'manager' AND osu_id != ?",
+    [managerId],
+  )
+}
+
+export function syncManagerRoleAtStartup() {
+  const managerId = Number(process.env.MANAGER_USER_ID)
+  if (!Number.isInteger(managerId)) {
+    return
+  }
+  applyManagerRole(managerId)
+}
+
 export function syncManagerRole(osuId: number) {
   const managerId = Number(process.env.MANAGER_USER_ID)
   if (!Number.isInteger(managerId)) {
     return
   }
   if (osuId === managerId) {
-    getDb().run("UPDATE users SET role = 'manager' WHERE osu_id = ?", [osuId])
+    applyManagerRole(managerId)
   } else {
     getDb().run(
       "UPDATE users SET role = 'basic' WHERE role = 'manager' AND osu_id != ?",
