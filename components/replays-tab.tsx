@@ -255,9 +255,6 @@ function ReplaySubmitForm({
     <form onSubmit={handleSubmit} className="flex flex-col gap-5">
       <DialogHeader>
         <DialogTitle>Submit a replay</DialogTitle>
-        <DialogDescription>
-          Upload a .osr replay and tell the admins why it deserves a closer look.
-        </DialogDescription>
       </DialogHeader>
       <div className="flex flex-col gap-4">
         <div className="flex flex-col gap-1.5">
@@ -280,7 +277,7 @@ function ReplaySubmitForm({
             disabled={skins.length === 0}
           >
             <option value="">
-              {skins.length === 0 ? "No skins yet" : "Select a skin"}
+              {skins.length === 0 ? "None selected" : "Select a skin"}
             </option>
             {skins.map((skin) => (
               <option key={skin.id} value={skin.id}>
@@ -288,21 +285,16 @@ function ReplaySubmitForm({
               </option>
             ))}
           </Select>
-          {skins.length === 0 && (
-            <p className="text-xs text-muted-foreground">
-              No skins yet — upload one in the Skins tab so you can pick it here.
-            </p>
-          )}
         </div>
         <div className="flex flex-col gap-1.5">
           <label htmlFor="replay-notes" className="text-sm font-medium">
-            Why should we look at this?
+            Comments
           </label>
           <Textarea
             id="replay-notes"
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
-            placeholder="e.g. the slider velocity here is unhinged and the aim is questionable…"
+            placeholder="goated score frfr"
           />
         </div>
         {error && <p className="text-sm text-destructive">{error}</p>}
@@ -313,7 +305,7 @@ function ReplaySubmitForm({
       <DialogFooter>
         <DialogClose render={<Button variant="outline" />}>Cancel</DialogClose>
         <Button type="submit" disabled={!file || busy}>
-          Continue
+          Next
         </Button>
       </DialogFooter>
     </form>
@@ -326,9 +318,6 @@ function EmptyState() {
       <CardContent className="flex flex-col items-center gap-2 py-10 text-center">
         <IconFile className="size-8 text-muted-foreground" />
         <p className="text-sm font-medium">No replays yet</p>
-        <p className="text-sm text-muted-foreground">
-          Submit your first .osr replay and it will show up here.
-        </p>
       </CardContent>
     </Card>
   )
@@ -415,13 +404,13 @@ export function ReplaysTab({
         <div className="flex flex-col gap-0.5">
           <h1 className="font-heading text-xl font-semibold">Replays</h1>
           <p className="text-sm text-muted-foreground">
-            Replays you have submitted to the judging pool.
+            All submitted replays will show here.
           </p>
         </div>
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger render={<Button />}>
             <IconUpload />
-            Submit replay
+            Submit
           </DialogTrigger>
           <DialogContent className="w-fit min-w-[min(24rem,calc(100%-2rem))] max-w-[min(42rem,calc(100%-2rem))] py-8">
             <ReplaySubmitForm
