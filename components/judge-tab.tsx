@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/dialog"
 import { ReplayCard } from "@/components/replay-card"
 import { Textarea } from "@/components/ui/textarea"
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { IconCheck, IconDownload, IconScale } from "@tabler/icons-react"
 import { replayFromApi, type Replay } from "@/components/app-shell"
 import type { ReplayApi } from "@/lib/replay-types"
@@ -25,11 +26,14 @@ function JudgeDialog({
   replay,
   onJudged,
   disabled,
+  userOsuId,
 }: {
   replay: Replay
   onJudged: (updated: Replay) => void
   disabled: boolean
+  userOsuId: number
 }) {
+  const isOwn = replay.submitter.osuId === userOsuId
   const [score, setScore] = useState(replay.myJudgment?.score ?? 0)
   const [comment, setComment] = useState(replay.myJudgment?.comment ?? "")
   const [open, setOpen] = useState(false)
@@ -61,15 +65,32 @@ function JudgeDialog({
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      {disabled ? (
-        <Button
-          variant={replay.myJudgment ? "secondary" : "default"}
-          size="sm"
-          disabled
-        >
-          <IconScale />
-          {replay.myJudgment ? "Edit vote" : "Vote"}
-        </Button>
+      {disabled || isOwn ? (
+        isOwn && !disabled ? (
+          <Tooltip>
+            <TooltipTrigger render={<span className="inline-flex" />}>
+              <Button
+                variant={replay.myJudgment ? "secondary" : "default"}
+                size="sm"
+                disabled
+                className="pointer-events-none"
+              >
+                <IconScale />
+                {replay.myJudgment ? "Edit vote" : "Vote"}
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>You cannot vote for your own replay.</TooltipContent>
+          </Tooltip>
+        ) : (
+          <Button
+            variant={replay.myJudgment ? "secondary" : "default"}
+            size="sm"
+            disabled
+          >
+            <IconScale />
+            {replay.myJudgment ? "Edit vote" : "Vote"}
+          </Button>
+        )
       ) : (
         <DialogTrigger
           render={
@@ -153,7 +174,7 @@ function JudgeDialog({
   )
 }
 
-export function JudgeTab() {
+export function JudgeTab({ userOsuId }: { userOsuId: number }) {
   const [replays, setReplays] = useState<Replay[]>([])
   const [loaded, setLoaded] = useState(false)
   const [failed, setFailed] = useState(false)
@@ -233,7 +254,12 @@ export function JudgeTab() {
                   >
                     <IconDownload />
                   </Button>
-                  <JudgeDialog replay={replay} onJudged={handleJudged} disabled={replay.manual} />
+                  <JudgeDialog
+                    replay={replay}
+                    onJudged={handleJudged}
+                    disabled={replay.manual}
+                    userOsuId={userOsuId}
+                  />
                 </>
               }
             />

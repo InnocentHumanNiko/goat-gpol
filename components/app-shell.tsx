@@ -167,7 +167,9 @@ export function AppShell({
             canSubmit={canSubmit}
           />
         )}
-        {tab === "judge" && canJudge(user.role) && <JudgeTab />}
+        {tab === "judge" && canJudge(user.role) && (
+          <JudgeTab userOsuId={user.osuId} />
+        )}
         {tab === "render" && canJudge(user.role) && <RenderTab />}
         {tab === "manage" && canAdmin(user.role) && <ManageTab user={user} />}
       </main>
