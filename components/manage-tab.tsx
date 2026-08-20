@@ -5,6 +5,16 @@ import { useEffect, useState } from "react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { ReplayCard } from "@/components/replay-card"
 import {
@@ -236,6 +246,72 @@ function UsersPanel({
   )
 }
 
+function RemoveReplayDialog({
+  replay,
+  onRemove,
+}: {
+  replay: Replay
+  onRemove: (replay: Replay) => Promise<void>
+}) {
+  const [open, setOpen] = useState(false)
+  const [removing, setRemoving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const handleRemove = async () => {
+    if (removing) {
+      return
+    }
+    setRemoving(true)
+    setError(null)
+    try {
+      await onRemove(replay)
+      setOpen(false)
+    } catch {
+      setError("Could not remove the replay.")
+      setRemoving(false)
+    }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger
+        render={
+          <Button
+            variant="destructive"
+            size="icon-sm"
+            aria-label="Remove replay"
+          />
+        }
+      >
+        <IconTrash />
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Remove replay</DialogTitle>
+          <DialogDescription>
+            {replay.beatmap.artist} - {replay.beatmap.title} [
+            {replay.beatmap.version}]
+          </DialogDescription>
+        </DialogHeader>
+        <p className="text-sm text-muted-foreground">
+          Remove this replay and its file permanently? This cannot be undone.
+        </p>
+        {error && <p className="text-sm text-destructive">{error}</p>}
+        <DialogFooter className="mt-4">
+          <DialogClose render={<Button variant="outline" />}>Cancel</DialogClose>
+          <Button
+            variant="destructive"
+            onClick={handleRemove}
+            disabled={removing}
+          >
+            {removing ? "Removing…" : "Remove"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
 function ReplaysPanel({
   replays,
   onChangeStatus,
@@ -243,7 +319,7 @@ function ReplaysPanel({
 }: {
   replays: Replay[]
   onChangeStatus: (replay: Replay, status: "pool" | "render") => void
-  onRemove: (replay: Replay) => void
+  onRemove: (replay: Replay) => Promise<void>
 }) {
   return (
     <section className="flex flex-col gap-3">
@@ -274,14 +350,7 @@ function ReplaysPanel({
                     {replay.status === "render" ? "Demote" : "Promote"}
                   </Button>
                   <VotingStatsDialog replay={replay} />
-                  <Button
-                    variant="destructive"
-                    size="icon-sm"
-                    aria-label="Remove replay"
-                    onClick={() => onRemove(replay)}
-                  >
-                    <IconTrash />
-                  </Button>
+                  <RemoveReplayDialog replay={replay} onRemove={onRemove} />
                 </>
               }
             />
@@ -427,13 +496,9 @@ export function ManageTab({ user }: { user: SessionUser }) {
   }
 
   const removeReplay = async (replay: Replay) => {
-    if (!window.confirm("Remove this replay and its file permanently?")) {
-      return
-    }
     const res = await fetch(`/replays/${replay.id}`, { method: "DELETE" })
     if (!res.ok) {
-      window.alert("Could not remove the replay.")
-      return
+      throw new Error("remove-failed")
     }
     setReplays((prev) => prev.filter((r) => r.id !== replay.id))
   }
