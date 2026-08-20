@@ -9,6 +9,7 @@ import { ReplaysTab } from "@/components/replays-tab"
 import { SiteNav } from "@/components/site-nav"
 import { SkinsTab } from "@/components/skins-tab"
 import { canAdmin, canJudge } from "@/lib/roles"
+import { cn } from "@/lib/utils"
 import type { ReplayApi, ReplayStatus, Role, SkinApi } from "@/lib/replay-types"
 
 export type Tab = "replays" | "skins" | "judge" | "render" | "manage"
@@ -151,7 +152,12 @@ export function AppShell({
   return (
     <div className="flex min-h-dvh flex-col">
       <SiteNav tab={tab} onTabChange={setTab} user={user} />
-      <main className="mx-auto w-full max-w-3xl flex-1 px-4 py-8">
+      <main
+        className={cn(
+          "mx-auto w-full flex-1 px-4 py-8",
+          tab === "manage" ? "max-w-5xl" : "max-w-3xl",
+        )}
+      >
         {tab === "replays" && (
           <ReplaysTab
             replays={replays}

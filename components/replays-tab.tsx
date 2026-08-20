@@ -19,7 +19,14 @@ import {
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { FilePicker } from "@/components/file-picker"
 import { ReplayCard, ScoreStatsPanel } from "@/components/replay-card"
-import { Select } from "@/components/ui/select"
+import {
+  Select,
+  SelectItem,
+  SelectItemText,
+  SelectPopup,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { IconExternalLink, IconFile, IconUpload } from "@tabler/icons-react"
 import { decodeReplayFile, type DecodedScore } from "@/lib/replay-decode"
@@ -216,19 +223,22 @@ function ReplaySubmitForm({
             Skin
           </label>
           <Select
-            id="replay-skin"
             value={skinId}
-            onChange={(e) => setSkinId(e.target.value)}
+            onValueChange={(value) => setSkinId(value ?? "")}
             disabled={skins.length === 0}
           >
-            <option value="">
-              {skins.length === 0 ? "None selected" : "Select a skin"}
-            </option>
-            {skins.map((skin) => (
-              <option key={skin.id} value={skin.id}>
-                {skin.name}
-              </option>
-            ))}
+            <SelectTrigger id="replay-skin">
+              <SelectValue
+                placeholder={skins.length === 0 ? "None selected" : "Select a skin"}
+              />
+            </SelectTrigger>
+            <SelectPopup>
+              {skins.map((skin) => (
+                <SelectItem key={skin.id} value={String(skin.id)}>
+                  <SelectItemText>{skin.name}</SelectItemText>
+                </SelectItem>
+              ))}
+            </SelectPopup>
           </Select>
         </div>
         <div className="flex flex-col gap-1.5">
