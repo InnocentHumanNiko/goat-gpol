@@ -5,6 +5,8 @@ import { getSessionUser } from "@/lib/session"
 
 export const dynamic = "force-dynamic"
 
+const DIFFICULTY_MODS = ["EZ", "HD", "HR", "DT", "NC", "HT", "FL", "TD"]
+
 export async function GET(request: NextRequest) {
   const user = await getSessionUser()
   if (!user) {
@@ -14,17 +16,34 @@ export async function GET(request: NextRequest) {
   if (!checksum) {
     return Response.json({ error: "missing checksum" }, { status: 400 })
   }
+  const mods = (request.nextUrl.searchParams.get("mods") ?? "")
+    .split(",")
+    .map((m) => m.trim())
+    .filter((m) => DIFFICULTY_MODS.includes(m))
   try {
-    const beatmap = await withUserApi(user.osu_id, (api) =>
-      api.lookupBeatmap({ checksum }),
-    )
+    const { beatmap, starRating } = await withUserApi(user.osu_id, async (api) => {
+      const beatmap = await api.lookupBeatmap({ checksum })
+      let starRating = beatmap.difficulty_rating
+      if (mods.length > 0) {
+        try {
+          const attributes = await api.getBeatmapDifficultyAttributesOsu(
+            beatmap.id,
+            mods,
+          )
+          starRating = attributes.star_rating
+        } catch {
+          // fall back to the base star rating when the mods are not calculable
+        }
+      }
+      return { beatmap, starRating }
+    })
     return Response.json({
       id: beatmap.id,
       title: beatmap.beatmapset.title,
       artist: beatmap.beatmapset.artist,
       creator: beatmap.beatmapset.creator,
       version: beatmap.version,
-      starRating: beatmap.difficulty_rating,
+      starRating,
       maxCombo: beatmap.max_combo,
       url: beatmap.url,
       backgroundUrl: beatmap.beatmapset.covers.cover,

@@ -72,8 +72,11 @@ function ReplaySubmitForm({
     setError(null)
     try {
       const score = await decodeReplayFile(file)
+      const modsParam = score.mods.length
+        ? `&mods=${encodeURIComponent(score.mods.join(","))}`
+        : ""
       const res = await fetch(
-        `/beatmap/lookup?checksum=${encodeURIComponent(score.beatmapHash)}`,
+        `/beatmap/lookup?checksum=${encodeURIComponent(score.beatmapHash)}${modsParam}`,
       )
       if (!res.ok) {
         throw new Error("beatmap-lookup-failed")
