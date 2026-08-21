@@ -9,6 +9,7 @@ import { ReplaysTab } from "@/components/replays-tab"
 import { SiteNav } from "@/components/site-nav"
 import { SkinsTab } from "@/components/skins-tab"
 import { canAdmin, canJudge } from "@/lib/roles"
+import { uploadSkin, type UploadProgress } from "@/lib/skin-upload"
 import { cn } from "@/lib/utils"
 import type { ReplayApi, ReplayStatus, Role, SkinApi } from "@/lib/replay-types"
 
@@ -112,17 +113,12 @@ export function AppShell({
     initialSkins.map((skin) => ({ ...skin })),
   )
 
-  const addSkin = async (name: string, file: File) => {
-    const params = new URLSearchParams({ name, fileName: file.name })
-    const res = await fetch(`/skins?${params}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/octet-stream" },
-      body: file,
-    })
-    if (!res.ok) {
-      throw new Error("skin-upload-failed")
-    }
-    const created = (await res.json()) as Skin
+  const addSkin = async (
+    name: string,
+    file: File,
+    onProgress?: (progress: UploadProgress) => void,
+  ) => {
+    const created = await uploadSkin({ name, file, onProgress })
     setSkins((prev) => [created, ...prev])
   }
 

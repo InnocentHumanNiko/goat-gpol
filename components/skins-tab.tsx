@@ -16,17 +16,24 @@ import {
 } from "@/components/ui/dialog"
 import { FilePicker } from "@/components/file-picker"
 import { Input } from "@/components/ui/input"
+import { Spinner } from "@/components/ui/spinner"
 import { IconPalette, IconUpload } from "@tabler/icons-react"
+import type { UploadProgress } from "@/lib/skin-upload"
 import type { Skin } from "@/components/app-shell"
 
 function SkinUploadForm({
   onUpload,
 }: {
-  onUpload: (name: string, file: File) => Promise<void>
+  onUpload: (
+    name: string,
+    file: File,
+    onProgress?: (progress: UploadProgress) => void,
+  ) => Promise<void>
 }) {
   const [name, setName] = useState("")
   const [file, setFile] = useState<File | null>(null)
   const [uploading, setUploading] = useState(false)
+  const [progress, setProgress] = useState<UploadProgress | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
@@ -37,7 +44,7 @@ function SkinUploadForm({
     setUploading(true)
     setError(null)
     try {
-      await onUpload(name.trim(), file)
+      await onUpload(name.trim(), file, setProgress)
     } catch {
       setError("Could not upload the skin. Please try again.")
       setUploading(false)
@@ -77,6 +84,12 @@ function SkinUploadForm({
         {error && <p className="text-sm text-destructive">{error}</p>}
       </div>
       <DialogFooter>
+        {uploading && progress && (
+          <p className="flex items-center gap-2 text-sm text-muted-foreground sm:mr-auto">
+            <Spinner />
+            {progress.percent}% done ({progress.mbps.toFixed(1)}mb/s)
+          </p>
+        )}
         <DialogClose render={<Button variant="outline" />}>Cancel</DialogClose>
         <Button type="submit" disabled={!file || name.trim() === "" || uploading}>
           {uploading ? "Uploading…" : "Upload skin"}
@@ -106,10 +119,23 @@ export function SkinsTab({
   canSubmit,
 }: {
   skins: Skin[]
-  onUpload: (name: string, file: File) => Promise<void>
+  onUpload: (
+    name: string,
+    file: File,
+    onProgress?: (progress: UploadProgress) => void,
+  ) => Promise<void>
   canSubmit: boolean
 }) {
   const [open, setOpen] = useState(false)
+
+  const handleUpload = async (
+    name: string,
+    file: File,
+    onProgress?: (progress: UploadProgress) => void,
+  ) => {
+    await onUpload(name, file, onProgress)
+    setOpen(false)
+  }
 
   return (
     <div className="flex flex-col gap-6">
@@ -127,12 +153,7 @@ export function SkinsTab({
               Upload skin
             </DialogTrigger>
             <DialogContent>
-              <SkinUploadForm
-                onUpload={async (name, file) => {
-                  await onUpload(name, file)
-                  setOpen(false)
-                }}
-              />
+              <SkinUploadForm onUpload={handleUpload} />
             </DialogContent>
           </Dialog>
         ) : (
