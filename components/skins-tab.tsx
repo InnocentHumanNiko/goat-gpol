@@ -221,7 +221,7 @@ function SkinUploadForm({
               id="skin-description"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="explain wtf is this skin"
+              placeholder="Explain where this skin should be used."
               maxLength={500}
               className="resize-none"
             />
