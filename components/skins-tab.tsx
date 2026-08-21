@@ -8,7 +8,6 @@ import {
   Dialog,
   DialogClose,
   DialogContent,
-  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -122,18 +121,14 @@ function SkinUploadForm({
     <form onSubmit={handleSubmit} className="flex flex-col gap-5">
       <DialogHeader>
         <DialogTitle>Upload a skin</DialogTitle>
-        <DialogDescription>
-          Skins are attached to replay submissions and used when your replay gets
-          rendered.
-        </DialogDescription>
       </DialogHeader>
       <div className="flex flex-col gap-4">
         <div className="flex flex-col gap-1.5">
           <span className="text-sm font-medium">Skin file</span>
           <FilePicker
             accept=".osk"
-            label="Choose a .osk skin"
-            hint="or drag and drop it here · max 500 MB"
+            label="Pick a skin file"
+            hint="or drag and drop it here"
             onFileChange={setFile}
           />
         </div>
@@ -227,7 +222,7 @@ function SkinUploadForm({
             id="skin-name"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            placeholder="e.g. vaxei skin edit"
+            placeholder="leaked owc skin"
           />
         </div>
         {error && <p className="text-sm text-destructive">{error}</p>}
@@ -262,9 +257,6 @@ function EmptyState() {
       <CardContent className="flex flex-col items-center gap-2 py-10 text-center">
         <IconPalette className="size-8 text-muted-foreground" />
         <p className="text-sm font-medium">No skins yet</p>
-        <p className="text-sm text-muted-foreground">
-          Upload a skin and it will be available when you submit a replay.
-        </p>
       </CardContent>
     </Card>
   )
@@ -308,7 +300,7 @@ export function SkinsTab({
         <div className="flex flex-col gap-0.5">
           <h1 className="font-heading text-xl font-semibold">Skins</h1>
           <p className="text-sm text-muted-foreground">
-            Skins you have uploaded to use in replay submissions.
+            Custom skins to be used when rendering.
           </p>
         </div>
         {canSubmit ? (
