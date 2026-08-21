@@ -308,6 +308,15 @@ export function listSkinsByUser(osuId: number): SkinWithUploader[] {
   ).all(osuId)
 }
 
+export function listSkins(): SkinWithUploader[] {
+  return getDb().query<SkinWithUploader, []>(
+    `SELECT s.*, u.username AS uploader_username
+     FROM skins s
+     JOIN users u ON u.osu_id = s.osu_id
+     ORDER BY s.created_at DESC`,
+  ).all()
+}
+
 export function deleteSkin(id: number) {
   getDb().run("DELETE FROM skins WHERE id = ?", [id])
 }

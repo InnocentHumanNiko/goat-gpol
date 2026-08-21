@@ -10,10 +10,13 @@ import {
   deleteSkin,
   getSkinById,
   insertSkin,
+  listSkins,
   listSkinsByUser,
   updateSkinFilePath,
+  type SkinWithUploader,
 } from "@/lib/db"
 import { getSessionUser } from "@/lib/session"
+import { canAdmin } from "@/lib/roles"
 import { SKIN_RULESETS, SKIN_TYPES } from "@/lib/skin-upload"
 
 export const dynamic = "force-dynamic"
@@ -25,6 +28,19 @@ const OSK_MAGIC = Buffer.from([0x50, 0x4b, 0x03, 0x04])
 const VALID_RULESETS = new Set<string>(SKIN_RULESETS)
 
 const VALID_TYPES = new Set<string>(SKIN_TYPES)
+
+function skinToApi(skin: SkinWithUploader) {
+  return {
+    id: skin.id,
+    name: skin.name,
+    rulesets: JSON.parse(skin.rulesets) as string[],
+    type: skin.type,
+    description: skin.description,
+    scrollSpeed: skin.scroll_speed,
+    createdAt: skin.created_at,
+    submitter: { osuId: skin.osu_id, username: skin.uploader_username },
+  }
+}
 
 function parseRulesets(raw: string | null): string[] | null {
   const rulesets = (raw ?? "")
@@ -73,23 +89,19 @@ class UploadGuard extends Transform {
   }
 }
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   const user = await getSessionUser()
   if (!user) {
     return Response.json({ error: "unauthorized" }, { status: 401 })
   }
-  return Response.json(
-    listSkinsByUser(user.osu_id).map((skin) => ({
-      id: skin.id,
-      name: skin.name,
-      rulesets: JSON.parse(skin.rulesets) as string[],
-      type: skin.type,
-      description: skin.description,
-      scrollSpeed: skin.scroll_speed,
-      createdAt: skin.created_at,
-      submitter: { osuId: skin.osu_id, username: skin.uploader_username },
-    })),
-  )
+  const scope = request.nextUrl.searchParams.get("scope") ?? "own"
+  if (scope === "all") {
+    if (!canAdmin(user.role)) {
+      return Response.json({ error: "forbidden" }, { status: 403 })
+    }
+    return Response.json(listSkins().map(skinToApi))
+  }
+  return Response.json(listSkinsByUser(user.osu_id).map(skinToApi))
 }
 
 export async function POST(request: NextRequest) {

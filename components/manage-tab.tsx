@@ -28,7 +28,9 @@ import {
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { VotingStatsDialog } from "@/components/voting-stats-dialog"
 import {
+  IconDownload,
   IconFileMusic,
+  IconPalette,
   IconSettings,
   IconTrash,
   IconUserCheck,
@@ -42,6 +44,7 @@ import {
   replayFromApi,
   type SessionUser,
   type Replay,
+  type Skin,
 } from "@/components/app-shell"
 import type { ReplayApi } from "@/lib/replay-types"
 import type { JudgeSettings } from "@/lib/judging"
@@ -54,12 +57,13 @@ type ManageUser = {
   bannedAt: number | null
 }
 
-type ManageSection = "thresholds" | "users" | "replays"
+type ManageSection = "thresholds" | "users" | "replays" | "skins"
 
 const MANAGE_SECTIONS: { id: ManageSection; label: string; icon: Icon }[] = [
   { id: "thresholds", label: "Thresholds", icon: IconSettings },
   { id: "users", label: "Users", icon: IconUsers },
   { id: "replays", label: "Replays", icon: IconFileMusic },
+  { id: "skins", label: "Skins", icon: IconPalette },
 ]
 
 function RoleSelect({
@@ -361,10 +365,134 @@ function ReplaysPanel({
   )
 }
 
+function RemoveSkinDialog({
+  skin,
+  onRemove,
+}: {
+  skin: Skin
+  onRemove: (skin: Skin) => Promise<void>
+}) {
+  const [open, setOpen] = useState(false)
+  const [removing, setRemoving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const handleRemove = async () => {
+    if (removing) {
+      return
+    }
+    setRemoving(true)
+    setError(null)
+    try {
+      await onRemove(skin)
+      setOpen(false)
+    } catch {
+      setError("Could not remove the skin.")
+      setRemoving(false)
+    }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger
+        render={
+          <Button
+            variant="destructive"
+            size="icon-sm"
+            aria-label="Remove skin"
+          />
+        }
+      >
+        <IconTrash />
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Remove skin</DialogTitle>
+          <DialogDescription>{skin.name}</DialogDescription>
+        </DialogHeader>
+        <p className="text-sm text-muted-foreground">
+          Remove this skin and its file permanently? This cannot be undone.
+        </p>
+        {error && <p className="text-sm text-destructive">{error}</p>}
+        <DialogFooter className="mt-4">
+          <DialogClose render={<Button variant="outline" />}>Cancel</DialogClose>
+          <Button
+            variant="destructive"
+            onClick={handleRemove}
+            disabled={removing}
+          >
+            {removing ? "Removing…" : "Remove"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+function SkinsPanel({
+  skins,
+  onRemove,
+}: {
+  skins: Skin[]
+  onRemove: (skin: Skin) => Promise<void>
+}) {
+  return (
+    <section className="flex flex-col gap-3">
+      <h2 className="font-heading text-lg font-semibold">Skins</h2>
+      <div className="flex flex-col divide-y overflow-hidden rounded-xl bg-card shadow-xs ring-1 ring-foreground/10">
+        {skins.length === 0 ? (
+          <p className="px-4 py-3 text-sm text-muted-foreground">
+            No skins uploaded yet.
+          </p>
+        ) : (
+          skins.map((skin) => (
+            <div
+              key={skin.id}
+              className="flex items-center justify-between gap-3 px-4 py-3"
+            >
+              <div className="flex min-w-0 items-start gap-2">
+                <IconPalette className="size-4 shrink-0 translate-y-0.5 text-muted-foreground" />
+                <div className="flex min-w-0 flex-col gap-0.5">
+                  <span className="truncate text-sm font-medium">
+                    {skin.name}
+                  </span>
+                  <p className="text-xs text-muted-foreground">
+                    Uploaded by{" "}
+                    <a
+                      href={`https://osu.ppy.sh/users/${skin.submitter.osuId}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="font-medium text-foreground hover:underline underline-offset-2"
+                    >
+                      {skin.submitter.username}
+                    </a>{" "}
+                    on {new Date(skin.createdAt).toLocaleDateString()}
+                  </p>
+                </div>
+              </div>
+              <div className="flex shrink-0 items-center gap-2">
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  render={<a href={`/skins/${skin.id}/file`} />}
+                  aria-label="Download skin"
+                >
+                  <IconDownload />
+                </Button>
+                <RemoveSkinDialog skin={skin} onRemove={onRemove} />
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+    </section>
+  )
+}
+
 export function ManageTab({ user }: { user: SessionUser }) {
   const [section, setSection] = useState<ManageSection>("thresholds")
   const [users, setUsers] = useState<ManageUser[]>([])
   const [replays, setReplays] = useState<Replay[]>([])
+  const [skins, setSkins] = useState<Skin[]>([])
   const [loaded, setLoaded] = useState(false)
   const [failed, setFailed] = useState(false)
   const [settings, setSettings] = useState<JudgeSettings | null>(null)
@@ -384,20 +512,27 @@ export function ManageTab({ user }: { user: SessionUser }) {
 
   useEffect(() => {
     let cancelled = false
-    Promise.all([fetch("/users"), fetch("/replays?scope=all"), fetch("/settings")])
-      .then(([usersRes, replaysRes, settingsRes]) =>
+    Promise.all([
+      fetch("/users"),
+      fetch("/replays?scope=all"),
+      fetch("/settings"),
+      fetch("/skins?scope=all"),
+    ])
+      .then(([usersRes, replaysRes, settingsRes, skinsRes]) =>
         Promise.all([
           usersRes.ok ? usersRes.json() : [],
           replaysRes.ok ? replaysRes.json() : [],
           settingsRes.ok ? settingsRes.json() : null,
+          skinsRes.ok ? skinsRes.json() : [],
         ]),
       )
-      .then(([usersData, replaysData, settingsData]) => {
+      .then(([usersData, replaysData, settingsData, skinsData]) => {
         if (cancelled) {
           return
         }
         setUsers(usersData as ManageUser[])
         setReplays((replaysData as ReplayApi[]).map(replayFromApi))
+        setSkins(skinsData as Skin[])
         if (settingsData) {
           const s = settingsData as JudgeSettings
           setSettings(s)
@@ -503,6 +638,14 @@ export function ManageTab({ user }: { user: SessionUser }) {
     setReplays((prev) => prev.filter((r) => r.id !== replay.id))
   }
 
+  const removeSkin = async (skin: Skin) => {
+    const res = await fetch(`/skins/${skin.id}`, { method: "DELETE" })
+    if (!res.ok) {
+      throw new Error("remove-failed")
+    }
+    setSkins((prev) => prev.filter((s) => s.id !== skin.id))
+  }
+
   return (
     <div className="flex flex-col gap-6">
       <header>
@@ -573,6 +716,9 @@ export function ManageTab({ user }: { user: SessionUser }) {
                 onChangeStatus={setReplayStatus}
                 onRemove={removeReplay}
               />
+            )}
+            {section === "skins" && (
+              <SkinsPanel skins={skins} onRemove={removeSkin} />
             )}
           </div>
         </div>

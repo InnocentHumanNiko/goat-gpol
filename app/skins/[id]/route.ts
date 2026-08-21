@@ -1,3 +1,4 @@
+import { rm } from "node:fs/promises"
 import { NextRequest } from "next/server"
 
 import { deleteSkin, getSkinById } from "@/lib/db"
@@ -23,5 +24,8 @@ export async function DELETE(
     return Response.json({ error: "forbidden" }, { status: 403 })
   }
   deleteSkin(skin.id)
+  if (skin.file_path) {
+    await rm(skin.file_path, { force: true })
+  }
   return new Response(null, { status: 204 })
 }
