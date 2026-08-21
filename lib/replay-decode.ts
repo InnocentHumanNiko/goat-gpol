@@ -5,7 +5,6 @@ import { decompress } from "lzma-js-simple-v2"
 import type { SkinRuleset } from "./skin-upload"
 
 export type DecodedScore = {
-  ruleset: number
   beatmapHash: string
   username: string
   date: Date
@@ -182,7 +181,6 @@ export async function decodeReplayFile(file: File): Promise<DecodedScore> {
   }
 
   return {
-    ruleset: info.ruleset,
     beatmapHash: info.beatmapHashMD5,
     username: info.username,
     date: info.date,

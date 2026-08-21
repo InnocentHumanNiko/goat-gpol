@@ -36,9 +36,11 @@ function Stat({
 export function ScoreStatsPanel({
   score,
   beatmapMaxCombo,
+  ruleset,
 }: {
   score: ScoreStats
   beatmapMaxCombo: number
+  ruleset?: SkinRuleset
 }) {
   return (
     <dl className="flex w-full flex-col gap-2">
@@ -66,22 +68,21 @@ export function ScoreStatsPanel({
         />
       </div>
       <div className="flex divide-x overflow-hidden rounded-md border bg-muted/50">
-        {( score.ruleset === 3 ?
-          [
-            { label: "300g", value: score.countGeki },
-            { label: "300", value: score.count300 },
-            { label: "200", value: score.countKatu },
-            { label: "100", value: score.count100 },
-            { label: "50", value: score.count50 },
-            { label: "Miss", value: score.countMiss },
-          ] as const
-          :
-          [
-            { label: "300", value: score.count300 },
-            { label: "100", value: score.count100 },
-            { label: "50", value: score.count50 },
-            { label: "Miss", value: score.countMiss },
-          ] as const
+        {(ruleset === "mania"
+          ? [
+              { label: "300g", value: score.countGeki },
+              { label: "300", value: score.count300 },
+              { label: "200", value: score.countKatu },
+              { label: "100", value: score.count100 },
+              { label: "50", value: score.count50 },
+              { label: "Miss", value: score.countMiss },
+            ] as const
+          : [
+              { label: "300", value: score.count300 },
+              { label: "100", value: score.count100 },
+              { label: "50", value: score.count50 },
+              { label: "Miss", value: score.countMiss },
+            ] as const
         ).map((s) => (
           <div
             key={s.label}
@@ -210,6 +211,7 @@ export function ReplayCard({
           <ScoreStatsPanel
             score={replay.score}
             beatmapMaxCombo={replay.beatmap.maxCombo}
+            ruleset={replay.ruleset as SkinRuleset}
           />
           <div className="flex items-center justify-between gap-3 text-sm">
             {(() => {

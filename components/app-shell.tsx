@@ -55,7 +55,6 @@ export type ScoreStats = {
   osuId?: number | null
   username: string
   date: Date
-  ruleset: number
   totalScore: number
   maxCombo: number
   accuracy: number

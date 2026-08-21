@@ -173,7 +173,7 @@ function ReplaySubmitForm({
     const { beatmap, score, skinName, notes: confirmNotes } = confirm
     return (
       <div className="flex flex-col gap-5">
-        <div className="relative -mx-6 -mt-6 h-40 w-[calc(100%+3rem)] overflow-hidden rounded-t-xl">
+        <div className="relative -mx-6 -mt-8 h-40 w-[calc(100%+3rem)] overflow-hidden rounded-t-xl">
           <Image
             src={beatmap.backgroundUrl}
             alt={`${beatmap.artist} - ${beatmap.title} background`}
@@ -220,7 +220,11 @@ function ReplaySubmitForm({
           </DialogDescription>
         </DialogHeader>
         <div className="flex flex-col gap-3">
-          <ScoreStatsPanel score={score} beatmapMaxCombo={beatmap.maxCombo} />
+          <ScoreStatsPanel
+            score={score}
+            beatmapMaxCombo={beatmap.maxCombo}
+            ruleset={score.ruleset}
+          />
           {(skinName || confirmNotes !== "") && (
             <div className="flex flex-col gap-1 rounded-md border px-3 py-2 text-sm">
               {skinName && (
