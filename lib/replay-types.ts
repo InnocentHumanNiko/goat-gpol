@@ -65,5 +65,6 @@ export type JudgmentApi = {
 export type SkinApi = {
   id: number
   name: string
+  rulesets: string[]
   createdAt: number
 }

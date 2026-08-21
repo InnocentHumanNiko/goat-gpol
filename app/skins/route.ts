@@ -14,12 +14,23 @@ import {
   updateSkinFilePath,
 } from "@/lib/db"
 import { getSessionUser } from "@/lib/session"
+import { SKIN_RULESETS } from "@/lib/skin-upload"
 
 export const dynamic = "force-dynamic"
 
 const MAX_SKIN_BYTES = 500 * 1024 * 1024
 
 const OSK_MAGIC = Buffer.from([0x50, 0x4b, 0x03, 0x04])
+
+const VALID_RULESETS = new Set<string>(SKIN_RULESETS)
+
+function parseRulesets(raw: string | null): string[] | null {
+  const rulesets = (raw ?? "")
+    .split(",")
+    .map((r) => r.trim())
+    .filter((r) => VALID_RULESETS.has(r))
+  return rulesets.length > 0 ? [...new Set(rulesets)] : null
+}
 
 class SkinUploadError extends Error {
   status: number
@@ -54,6 +65,7 @@ export async function GET() {
     listSkinsByUser(user.osu_id).map((skin) => ({
       id: skin.id,
       name: skin.name,
+      rulesets: JSON.parse(skin.rulesets) as string[],
       createdAt: skin.created_at,
     })),
   )
@@ -70,8 +82,12 @@ export async function POST(request: NextRequest) {
 
   const name = (request.nextUrl.searchParams.get("name") ?? "").trim()
   const fileName = request.nextUrl.searchParams.get("fileName") ?? ""
+  const rulesets = parseRulesets(request.nextUrl.searchParams.get("rulesets"))
   if (!name || name.length > 100) {
     return Response.json({ error: "invalid name" }, { status: 400 })
+  }
+  if (!rulesets) {
+    return Response.json({ error: "invalid rulesets" }, { status: 400 })
   }
   if (!fileName.toLowerCase().endsWith(".osk")) {
     return Response.json({ error: "invalid file type" }, { status: 400 })
@@ -84,7 +100,7 @@ export async function POST(request: NextRequest) {
     return Response.json({ error: "missing file" }, { status: 400 })
   }
 
-  const id = insertSkin(user.osu_id, name)
+  const id = insertSkin(user.osu_id, name, JSON.stringify(rulesets))
 
   const dir = path.join(process.cwd(), "data", "skins")
   await mkdir(dir, { recursive: true })
@@ -114,7 +130,12 @@ export async function POST(request: NextRequest) {
     return Response.json({ error: "internal error" }, { status: 500 })
   }
   return Response.json(
-    { id: row.id, name: row.name, createdAt: row.created_at },
+    {
+      id: row.id,
+      name: row.name,
+      rulesets: JSON.parse(row.rulesets) as string[],
+      createdAt: row.created_at,
+    },
     { status: 201 },
   )
 }

@@ -9,7 +9,11 @@ import { ReplaysTab } from "@/components/replays-tab"
 import { SiteNav } from "@/components/site-nav"
 import { SkinsTab } from "@/components/skins-tab"
 import { canAdmin, canJudge } from "@/lib/roles"
-import { uploadSkin, type UploadProgress } from "@/lib/skin-upload"
+import {
+  uploadSkin,
+  type SkinRuleset,
+  type UploadProgress,
+} from "@/lib/skin-upload"
 import { cn } from "@/lib/utils"
 import type { ReplayApi, ReplayStatus, Role, SkinApi } from "@/lib/replay-types"
 
@@ -27,6 +31,7 @@ export type SessionUser = {
 export type Skin = {
   id: number
   name: string
+  rulesets: string[]
   createdAt: number
 }
 
@@ -117,8 +122,9 @@ export function AppShell({
     name: string,
     file: File,
     onProgress?: (progress: UploadProgress) => void,
+    rulesets: SkinRuleset[] = [],
   ) => {
-    const created = await uploadSkin({ name, file, onProgress })
+    const created = await uploadSkin({ name, file, rulesets, onProgress })
     setSkins((prev) => [created, ...prev])
   }
 

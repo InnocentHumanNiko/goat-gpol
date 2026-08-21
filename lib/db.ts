@@ -149,6 +149,7 @@ function migrate(db: Database) {
   ensureColumn(db, "replays", "manual", "manual INTEGER NOT NULL DEFAULT 0")
   ensureColumn(db, "replays", "locked", "locked INTEGER NOT NULL DEFAULT 0")
   ensureColumn(db, "skins", "file_path", "file_path TEXT NOT NULL DEFAULT ''")
+  ensureColumn(db, "skins", "rulesets", "rulesets TEXT NOT NULL DEFAULT '[]'")
   db.run("CREATE INDEX IF NOT EXISTS idx_sessions_osu_id ON sessions(osu_id)")
   db.run("CREATE INDEX IF NOT EXISTS idx_sessions_expires_at ON sessions(expires_at)")
   db.run("CREATE INDEX IF NOT EXISTS idx_replays_created_at ON replays(created_at DESC)")
@@ -257,14 +258,19 @@ export type SkinRow = {
   id: number
   osu_id: number
   name: string
+  rulesets: string
   file_path: string
   created_at: number
 }
 
-export function insertSkin(osuId: number, name: string): number {
+export function insertSkin(
+  osuId: number,
+  name: string,
+  rulesets: string,
+): number {
   const result = getDb().run(
-    "INSERT INTO skins (osu_id, name, created_at) VALUES (?, ?, ?)",
-    [osuId, name, Date.now()],
+    "INSERT INTO skins (osu_id, name, rulesets, created_at) VALUES (?, ?, ?, ?)",
+    [osuId, name, rulesets, Date.now()],
   )
   return Number(result.lastInsertRowid)
 }

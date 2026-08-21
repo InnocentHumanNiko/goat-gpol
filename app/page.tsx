@@ -31,6 +31,7 @@ export default async function HomePage({
       initialSkins={listSkinsByUser(user.osu_id).map((skin) => ({
         id: skin.id,
         name: skin.name,
+        rulesets: JSON.parse(skin.rulesets) as string[],
         createdAt: skin.created_at,
       }))}
     />

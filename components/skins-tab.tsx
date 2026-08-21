@@ -15,11 +15,29 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog"
 import { FilePicker } from "@/components/file-picker"
+import {
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import { Input } from "@/components/ui/input"
 import { Spinner } from "@/components/ui/spinner"
-import { IconPalette, IconUpload } from "@tabler/icons-react"
-import type { UploadProgress } from "@/lib/skin-upload"
+import {
+  IconChevronDown,
+  IconPalette,
+  IconUpload,
+} from "@tabler/icons-react"
+import type { SkinRuleset, UploadProgress } from "@/lib/skin-upload"
+import { cn } from "@/lib/utils"
 import type { Skin } from "@/components/app-shell"
+
+const RULESET_OPTIONS: { id: SkinRuleset; label: string }[] = [
+  { id: "osu", label: "osu!" },
+  { id: "mania", label: "osu!mania" },
+  { id: "catch", label: "osu!catch" },
+  { id: "taiko", label: "osu!taiko" },
+]
 
 function SkinUploadForm({
   onUpload,
@@ -28,23 +46,35 @@ function SkinUploadForm({
     name: string,
     file: File,
     onProgress?: (progress: UploadProgress) => void,
+    rulesets?: SkinRuleset[],
   ) => Promise<void>
 }) {
   const [name, setName] = useState("")
   const [file, setFile] = useState<File | null>(null)
+  const [rulesets, setRulesets] = useState<SkinRuleset[]>(["osu"])
   const [uploading, setUploading] = useState(false)
   const [progress, setProgress] = useState<UploadProgress | null>(null)
   const [error, setError] = useState<string | null>(null)
 
+  const toggleRuleset = (id: SkinRuleset, checked: boolean) => {
+    setRulesets((prev) =>
+      checked ? [...prev, id] : prev.filter((r) => r !== id),
+    )
+  }
+
+  const selectedLabels = RULESET_OPTIONS.filter((option) =>
+    rulesets.includes(option.id),
+  ).map((option) => option.label)
+
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault()
-    if (!file || name.trim() === "" || uploading) {
+    if (!file || name.trim() === "" || uploading || rulesets.length === 0) {
       return
     }
     setUploading(true)
     setError(null)
     try {
-      await onUpload(name.trim(), file, setProgress)
+      await onUpload(name.trim(), file, setProgress, [...rulesets])
     } catch {
       setError("Could not upload the skin. Please try again.")
       setUploading(false)
@@ -71,6 +101,37 @@ function SkinUploadForm({
           />
         </div>
         <div className="flex flex-col gap-1.5">
+          <span className="text-sm font-medium">Ruleset</span>
+          <DropdownMenu>
+            <DropdownMenuTrigger
+              aria-label="Ruleset"
+              className={cn(
+                "flex h-9 w-full items-center justify-between gap-2 rounded-md border border-input bg-transparent px-2.5 text-sm shadow-xs transition-[color,box-shadow] outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 data-popup-open:border-ring data-popup-open:ring-3 data-popup-open:ring-ring/50",
+                rulesets.length === 0 && "text-muted-foreground",
+              )}
+            >
+              <span className="line-clamp-1 truncate">
+                {selectedLabels.length > 0 ? selectedLabels.join(", ") : "None selected"}
+              </span>
+              <IconChevronDown className="size-4 shrink-0 opacity-50" />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent>
+              {RULESET_OPTIONS.map((option) => (
+                <DropdownMenuCheckboxItem
+                  key={option.id}
+                  checked={rulesets.includes(option.id)}
+                  onCheckedChange={(checked) =>
+                    toggleRuleset(option.id, checked === true)
+                  }
+                  closeOnClick={false}
+                >
+                  {option.label}
+                </DropdownMenuCheckboxItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+        <div className="flex flex-col gap-1.5">
           <label htmlFor="skin-name" className="text-sm font-medium">
             Skin name
           </label>
@@ -91,7 +152,15 @@ function SkinUploadForm({
           </p>
         )}
         <DialogClose render={<Button variant="outline" />}>Cancel</DialogClose>
-        <Button type="submit" disabled={!file || name.trim() === "" || uploading}>
+        <Button
+          type="submit"
+          disabled={
+            !file ||
+            name.trim() === "" ||
+            rulesets.length === 0 ||
+            uploading
+          }
+        >
           {uploading ? "Uploading…" : "Upload skin"}
         </Button>
       </DialogFooter>

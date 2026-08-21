@@ -1,5 +1,9 @@
 import type { SkinApi } from "@/lib/replay-types"
 
+export const SKIN_RULESETS = ["osu", "mania", "catch", "taiko"] as const
+
+export type SkinRuleset = (typeof SKIN_RULESETS)[number]
+
 export type UploadProgress = {
   percent: number
   mbps: number
@@ -8,14 +12,20 @@ export type UploadProgress = {
 export function uploadSkin({
   name,
   file,
+  rulesets,
   onProgress,
 }: {
   name: string
   file: File
+  rulesets: SkinRuleset[]
   onProgress?: (progress: UploadProgress) => void
 }): Promise<SkinApi> {
   return new Promise((resolve, reject) => {
-    const params = new URLSearchParams({ name, fileName: file.name })
+    const params = new URLSearchParams({
+      name,
+      fileName: file.name,
+      rulesets: rulesets.join(","),
+    })
     const xhr = new XMLHttpRequest()
     xhr.open("POST", `/skins?${params}`)
     xhr.responseType = "json"
