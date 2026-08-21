@@ -163,8 +163,14 @@ function ReplaySubmitForm({
         },
         confirm.file,
       )
-    } catch {
-      setSubmitError("Could not submit the replay. Please try again.")
+    } catch (err) {
+      setSubmitError(
+        err instanceof Error && err.message === "duplicate-own"
+          ? "You cannot submit a replay twice."
+          : err instanceof Error && err.message === "duplicate-other"
+            ? "This replay has already been submitted by another user."
+            : "Could not submit the replay. Please try again.",
+      )
       setSubmitting(false)
     }
   }

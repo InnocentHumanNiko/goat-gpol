@@ -446,6 +446,33 @@ export function insertReplay(input: NewReplay): number {
   return Number(result.lastInsertRowid)
 }
 
+export function findDuplicateReplay(
+  beatmapChecksum: string,
+  scoreOsuId: number | null,
+  scoreUsername: string,
+  scoreDate: number,
+): ReplayWithSubmitter | null {
+  if (scoreOsuId !== null) {
+    return getDb().query<
+      ReplayWithSubmitter,
+      [string, number, number]
+    >(
+      `SELECT r.*, u.username AS submitter_username
+       FROM replays r
+       JOIN users u ON u.osu_id = r.osu_id
+       WHERE r.beatmap_checksum = ? AND r.score_osu_id = ? AND r.score_date = ?
+       LIMIT 1`,
+    ).get(beatmapChecksum, scoreOsuId, scoreDate)
+  }
+  return getDb().query<ReplayWithSubmitter, [string, string, number]>(
+    `SELECT r.*, u.username AS submitter_username
+     FROM replays r
+     JOIN users u ON u.osu_id = r.osu_id
+     WHERE r.beatmap_checksum = ? AND r.score_username = ? COLLATE NOCASE AND r.score_date = ?
+     LIMIT 1`,
+  ).get(beatmapChecksum, scoreUsername, scoreDate)
+}
+
 export function updateReplayFilePath(id: number, filePath: string) {
   getDb().run("UPDATE replays SET file_path = ? WHERE id = ?", [filePath, id])
 }

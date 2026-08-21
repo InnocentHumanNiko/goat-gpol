@@ -157,7 +157,16 @@ export function AppShell({
     )
     const res = await fetch("/replays", { method: "POST", body: form })
     if (!res.ok) {
-      throw new Error("submit-failed")
+      const body = (await res.json().catch(() => null)) as {
+        error?: string
+      } | null
+      throw new Error(
+        body?.error === "replay-already-submitted"
+          ? "duplicate-own"
+          : body?.error === "replay-submitted-by-other"
+            ? "duplicate-other"
+            : "submit-failed",
+      )
     }
     const created = (await res.json()) as ReplayApi
     setReplays((prev) => [replayFromApi(created), ...prev])

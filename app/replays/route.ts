@@ -3,6 +3,7 @@ import path from "node:path"
 import { NextRequest } from "next/server"
 
 import {
+  findDuplicateReplay,
   getReplayById,
   insertReplay,
   listReplays,
@@ -134,6 +135,24 @@ export async function POST(request: NextRequest) {
     scoreOsuId = scoreUser.id
   } catch {
     scoreOsuId = null
+  }
+
+  const duplicate = findDuplicateReplay(
+    input.beatmapChecksum,
+    scoreOsuId,
+    input.score.username,
+    input.score.date,
+  )
+  if (duplicate) {
+    return Response.json(
+      {
+        error:
+          duplicate.osu_id === user.osu_id
+            ? "replay-already-submitted"
+            : "replay-submitted-by-other",
+      },
+      { status: 409 },
+    )
   }
 
   const id = insertReplay({
