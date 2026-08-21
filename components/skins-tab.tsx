@@ -43,13 +43,23 @@ import type {
   UploadProgress,
 } from "@/lib/skin-upload"
 import { cn } from "@/lib/utils"
+import {
+  OsuCatchIcon,
+  OsuIcon,
+  OsuManiaIcon,
+  OsuTaikoIcon,
+} from "@/components/ruleset-icons"
 import type { Skin } from "@/components/app-shell"
 
-const RULESET_OPTIONS: { id: SkinRuleset; label: string }[] = [
-  { id: "osu", label: "osu!" },
-  { id: "mania", label: "osu!mania" },
-  { id: "catch", label: "osu!catch" },
-  { id: "taiko", label: "osu!taiko" },
+const RULESET_OPTIONS: {
+  id: SkinRuleset
+  label: string
+  icon: typeof OsuIcon
+}[] = [
+  { id: "osu", label: "osu!", icon: OsuIcon },
+  { id: "mania", label: "osu!mania", icon: OsuManiaIcon },
+  { id: "catch", label: "osu!catch", icon: OsuCatchIcon },
+  { id: "taiko", label: "osu!taiko", icon: OsuTaikoIcon },
 ]
 
 const TYPE_OPTIONS: { id: SkinType; label: string }[] = [
@@ -157,7 +167,10 @@ function SkinUploadForm({
                   }
                   closeOnClick={false}
                 >
-                  {option.label}
+                  <span className="flex items-center gap-2">
+                    <option.icon className="size-3.5 shrink-0" />
+                    {option.label}
+                  </span>
                 </DropdownMenuCheckboxItem>
               ))}
             </DropdownMenuContent>
