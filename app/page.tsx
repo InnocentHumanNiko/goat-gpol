@@ -36,6 +36,7 @@ export default async function HomePage({
         description: skin.description,
         scrollSpeed: skin.scroll_speed,
         createdAt: skin.created_at,
+        submitter: { osuId: skin.osu_id, username: skin.uploader_username },
       }))}
     />
   )

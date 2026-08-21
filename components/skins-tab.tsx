@@ -329,13 +329,26 @@ export function SkinsTab({
               key={skin.id}
               className="flex items-center justify-between gap-4 px-4 py-3"
             >
-              <div className="flex min-w-0 items-center gap-2">
-                <IconPalette className="size-4 shrink-0 text-muted-foreground" />
-                <span className="truncate text-sm font-medium">{skin.name}</span>
+              <div className="flex min-w-0 items-start gap-2">
+                <IconPalette className="size-4 shrink-0 translate-y-0.5 text-muted-foreground" />
+                <div className="flex min-w-0 flex-col gap-0.5">
+                  <span className="truncate text-sm font-medium">
+                    {skin.name}
+                  </span>
+                  <p className="text-xs text-muted-foreground">
+                    Uploaded by{" "}
+                    <a
+                      href={`https://osu.ppy.sh/users/${skin.submitter.osuId}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="font-medium text-foreground hover:underline underline-offset-2"
+                    >
+                      {skin.submitter.username}
+                    </a>{" "}
+                    on {new Date(skin.createdAt).toLocaleDateString()}
+                  </p>
+                </div>
               </div>
-              <span className="shrink-0 text-xs text-muted-foreground">
-                {new Date(skin.createdAt).toLocaleDateString()}
-              </span>
             </li>
           ))}
         </ul>

@@ -294,9 +294,15 @@ export function getSkinById(id: number): SkinRow | null {
   ).get(id)
 }
 
-export function listSkinsByUser(osuId: number): SkinRow[] {
-  return getDb().query<SkinRow, [number]>(
-    "SELECT * FROM skins WHERE osu_id = ? ORDER BY created_at DESC",
+export type SkinWithUploader = SkinRow & { uploader_username: string }
+
+export function listSkinsByUser(osuId: number): SkinWithUploader[] {
+  return getDb().query<SkinWithUploader, [number]>(
+    `SELECT s.*, u.username AS uploader_username
+     FROM skins s
+     JOIN users u ON u.osu_id = s.osu_id
+     WHERE s.osu_id = ?
+     ORDER BY s.created_at DESC`,
   ).all(osuId)
 }
 

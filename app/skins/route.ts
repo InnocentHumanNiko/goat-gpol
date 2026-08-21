@@ -87,6 +87,7 @@ export async function GET() {
       description: skin.description,
       scrollSpeed: skin.scroll_speed,
       createdAt: skin.created_at,
+      submitter: { osuId: skin.osu_id, username: skin.uploader_username },
     })),
   )
 }
@@ -183,6 +184,7 @@ export async function POST(request: NextRequest) {
       description: row.description,
       scrollSpeed: row.scroll_speed,
       createdAt: row.created_at,
+      submitter: { osuId: user.osu_id, username: user.username },
     },
     { status: 201 },
   )
