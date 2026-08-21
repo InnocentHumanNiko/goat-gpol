@@ -1,9 +1,49 @@
+import { createWriteStream } from "node:fs"
+import { mkdir, rename, rm } from "node:fs/promises"
+import path from "node:path"
+import { Readable, Transform } from "node:stream"
+import type { ReadableStream as NodeWebReadableStream } from "node:stream/web"
+import { pipeline } from "node:stream/promises"
 import { NextRequest } from "next/server"
 
-import { insertSkin, listSkinsByUser } from "@/lib/db"
+import {
+  deleteSkin,
+  getSkinById,
+  insertSkin,
+  listSkinsByUser,
+  updateSkinFilePath,
+} from "@/lib/db"
 import { getSessionUser } from "@/lib/session"
 
 export const dynamic = "force-dynamic"
+
+const MAX_SKIN_BYTES = 500 * 1024 * 1024
+
+const OSK_MAGIC = Buffer.from([0x50, 0x4b, 0x03, 0x04])
+
+class SkinUploadError extends Error {
+  status: number
+  constructor(message: string, status: number) {
+    super(message)
+    this.status = status
+  }
+}
+
+class UploadGuard extends Transform {
+  private seen = 0
+  _transform(chunk: Buffer, _enc: BufferEncoding, cb: (e?: Error | null, d?: Buffer) => void) {
+    if (this.seen === 0 && !chunk.subarray(0, OSK_MAGIC.length).equals(OSK_MAGIC)) {
+      cb(new SkinUploadError("invalid file type", 400))
+      return
+    }
+    this.seen += chunk.length
+    if (this.seen > MAX_SKIN_BYTES) {
+      cb(new SkinUploadError("file too large", 413))
+      return
+    }
+    cb(null, chunk)
+  }
+}
 
 export async function GET() {
   const user = await getSessionUser()
@@ -27,11 +67,54 @@ export async function POST(request: NextRequest) {
   if (user.banned_at !== null) {
     return Response.json({ error: "banned" }, { status: 403 })
   }
-  const body = await request.json().catch(() => null)
-  const name = body && typeof body.name === "string" ? body.name.trim() : ""
+
+  const name = (request.nextUrl.searchParams.get("name") ?? "").trim()
+  const fileName = request.nextUrl.searchParams.get("fileName") ?? ""
   if (!name || name.length > 100) {
     return Response.json({ error: "invalid name" }, { status: 400 })
   }
+  if (!fileName.toLowerCase().endsWith(".osk")) {
+    return Response.json({ error: "invalid file type" }, { status: 400 })
+  }
+  const contentLength = Number(request.headers.get("content-length"))
+  if (Number.isFinite(contentLength) && contentLength > MAX_SKIN_BYTES) {
+    return Response.json({ error: "file too large" }, { status: 413 })
+  }
+  if (!request.body) {
+    return Response.json({ error: "missing file" }, { status: 400 })
+  }
+
   const id = insertSkin(user.osu_id, name)
-  return Response.json({ id, name, createdAt: Date.now() }, { status: 201 })
+
+  const dir = path.join(process.cwd(), "data", "skins")
+  await mkdir(dir, { recursive: true })
+  const filePath = path.join(dir, `${id}.osk`)
+  const tempPath = `${filePath}.part`
+
+  try {
+    await pipeline(
+      Readable.fromWeb(request.body as unknown as NodeWebReadableStream),
+      new UploadGuard(),
+      createWriteStream(tempPath),
+    )
+  } catch (error) {
+    await rm(tempPath, { force: true })
+    deleteSkin(id)
+    if (error instanceof SkinUploadError) {
+      return Response.json({ error: error.message }, { status: error.status })
+    }
+    return Response.json({ error: "upload failed" }, { status: 500 })
+  }
+
+  await rename(tempPath, filePath)
+  updateSkinFilePath(id, filePath)
+
+  const row = getSkinById(id)
+  if (!row) {
+    return Response.json({ error: "internal error" }, { status: 500 })
+  }
+  return Response.json(
+    { id: row.id, name: row.name, createdAt: row.created_at },
+    { status: 201 },
+  )
 }

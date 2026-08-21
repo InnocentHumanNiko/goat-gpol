@@ -148,6 +148,7 @@ function migrate(db: Database) {
   ensureColumn(db, "replays", "status", "status TEXT NOT NULL DEFAULT 'pool'")
   ensureColumn(db, "replays", "manual", "manual INTEGER NOT NULL DEFAULT 0")
   ensureColumn(db, "replays", "locked", "locked INTEGER NOT NULL DEFAULT 0")
+  ensureColumn(db, "skins", "file_path", "file_path TEXT NOT NULL DEFAULT ''")
   db.run("CREATE INDEX IF NOT EXISTS idx_sessions_osu_id ON sessions(osu_id)")
   db.run("CREATE INDEX IF NOT EXISTS idx_sessions_expires_at ON sessions(expires_at)")
   db.run("CREATE INDEX IF NOT EXISTS idx_replays_created_at ON replays(created_at DESC)")
@@ -256,6 +257,7 @@ export type SkinRow = {
   id: number
   osu_id: number
   name: string
+  file_path: string
   created_at: number
 }
 
@@ -265,6 +267,10 @@ export function insertSkin(osuId: number, name: string): number {
     [osuId, name, Date.now()],
   )
   return Number(result.lastInsertRowid)
+}
+
+export function updateSkinFilePath(id: number, filePath: string) {
+  getDb().run("UPDATE skins SET file_path = ? WHERE id = ?", [filePath, id])
 }
 
 export function getSkinById(id: number): SkinRow | null {

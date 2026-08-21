@@ -22,7 +22,7 @@ import type { Skin } from "@/components/app-shell"
 function SkinUploadForm({
   onUpload,
 }: {
-  onUpload: (name: string) => Promise<void>
+  onUpload: (name: string, file: File) => Promise<void>
 }) {
   const [name, setName] = useState("")
   const [file, setFile] = useState<File | null>(null)
@@ -37,7 +37,7 @@ function SkinUploadForm({
     setUploading(true)
     setError(null)
     try {
-      await onUpload(name.trim())
+      await onUpload(name.trim(), file)
     } catch {
       setError("Could not upload the skin. Please try again.")
       setUploading(false)
@@ -59,7 +59,7 @@ function SkinUploadForm({
           <FilePicker
             accept=".osk"
             label="Choose a .osk skin"
-            hint="or drag and drop it here"
+            hint="or drag and drop it here · max 500 MB"
             onFileChange={setFile}
           />
         </div>
@@ -106,7 +106,7 @@ export function SkinsTab({
   canSubmit,
 }: {
   skins: Skin[]
-  onUpload: (name: string) => Promise<void>
+  onUpload: (name: string, file: File) => Promise<void>
   canSubmit: boolean
 }) {
   const [open, setOpen] = useState(false)
@@ -128,8 +128,8 @@ export function SkinsTab({
             </DialogTrigger>
             <DialogContent>
               <SkinUploadForm
-                onUpload={async (name) => {
-                  await onUpload(name)
+                onUpload={async (name, file) => {
+                  await onUpload(name, file)
                   setOpen(false)
                 }}
               />

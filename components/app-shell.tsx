@@ -112,11 +112,12 @@ export function AppShell({
     initialSkins.map((skin) => ({ ...skin })),
   )
 
-  const addSkin = async (name: string) => {
-    const res = await fetch("/skins", {
+  const addSkin = async (name: string, file: File) => {
+    const params = new URLSearchParams({ name, fileName: file.name })
+    const res = await fetch(`/skins?${params}`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name }),
+      headers: { "Content-Type": "application/octet-stream" },
+      body: file,
     })
     if (!res.ok) {
       throw new Error("skin-upload-failed")

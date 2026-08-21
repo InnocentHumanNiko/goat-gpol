@@ -17,7 +17,7 @@ export function SiteNav({
 }) {
   const tabs: { id: Tab; label: string; disabled?: boolean }[] = [
     { id: "replays", label: "Replays" },
-    { id: "skins", label: "Skins", disabled: true },
+    { id: "skins", label: "Skins" },
   ]
   if (canJudge(user.role)) {
     tabs.push({ id: "judge", label: "Judge" }, { id: "render", label: "Render" })
