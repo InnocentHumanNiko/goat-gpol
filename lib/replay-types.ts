@@ -36,6 +36,7 @@ export type ReplayMetadata = {
   fileName: string
   skinName: string | null
   notes: string
+  ruleset: string
   beatmapChecksum: string
   beatmap: BeatmapApi
   score: ScoreApi
@@ -44,6 +45,7 @@ export type ReplayMetadata = {
 export type ReplayApi = ReplayMetadata & {
   id: number
   createdAt: number
+  ruleset: string
   submitter: { osuId: number; username: string }
   status: ReplayStatus
   manual: boolean

@@ -40,6 +40,8 @@ function parseReplayMetadata(raw: string): ReplayMetadata | null {
       str(value.fileName) &&
       (value.skinName === null || str(value.skinName)) &&
       str(value.notes) &&
+      str(value.ruleset) &&
+      ["osu", "taiko", "catch", "mania"].includes(value.ruleset) &&
       str(value.beatmapChecksum) &&
       num(beatmap.id) &&
       str(beatmap.title) &&
@@ -139,6 +141,7 @@ export async function POST(request: NextRequest) {
     fileName: input.fileName,
     skinName: input.skinName,
     notes: input.notes,
+    ruleset: input.ruleset,
     beatmapChecksum: input.beatmapChecksum,
     beatmap: input.beatmap,
     score: { ...input.score, osuId: scoreOsuId },

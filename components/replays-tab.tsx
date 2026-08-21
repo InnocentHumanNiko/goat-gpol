@@ -35,28 +35,13 @@ import {
 } from "@tabler/icons-react"
 import { decodeReplayFile, type DecodedScore } from "@/lib/replay-decode"
 import type { SkinRuleset } from "@/lib/skin-upload"
-import {
-  OsuCatchIcon,
-  OsuIcon,
-  OsuManiaIcon,
-  OsuTaikoIcon,
-} from "@/components/ruleset-icons"
+import { RULESET_META } from "@/components/ruleset-icons"
 import type {
   BeatmapInfo,
   Replay,
   ReplayInput,
   Skin,
 } from "@/components/app-shell"
-
-const RULESET_META: Record<
-  SkinRuleset,
-  { label: string; icon: typeof OsuIcon }
-> = {
-  osu: { label: "osu!", icon: OsuIcon },
-  mania: { label: "osu!mania", icon: OsuManiaIcon },
-  catch: { label: "osu!catch", icon: OsuCatchIcon },
-  taiko: { label: "osu!taiko", icon: OsuTaikoIcon },
-}
 
 const DEFAULT_SKIN_ID = "default"
 
@@ -174,6 +159,7 @@ function ReplaySubmitForm({
           beatmapChecksum: confirm.beatmapChecksum,
           beatmap: confirm.beatmap,
           score: confirm.score,
+          ruleset: confirm.score.ruleset,
         },
         confirm.file,
       )

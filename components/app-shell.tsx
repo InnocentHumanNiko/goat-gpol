@@ -74,6 +74,7 @@ export type ReplayInput = {
   beatmapChecksum: string
   beatmap: BeatmapInfo
   score: ScoreStats
+  ruleset: SkinRuleset
 }
 
 export type Replay = ReplayInput & {
@@ -101,6 +102,7 @@ export function replayFromApi(api: ReplayApi): Replay {
     myJudgment: api.myJudgment,
     judgmentSummary: api.judgmentSummary,
     submitter: api.submitter,
+    ruleset: api.ruleset as SkinRuleset,
   }
 }
 
@@ -147,6 +149,7 @@ export function AppShell({
         fileName: input.fileName,
         skinName: input.skinName,
         notes: input.notes,
+        ruleset: input.ruleset,
         beatmapChecksum: input.beatmapChecksum,
         beatmap: input.beatmap,
         score: { ...input.score, date: input.score.date.getTime() },

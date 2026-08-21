@@ -1,5 +1,17 @@
 import type { SVGProps } from "react"
 
+import type { SkinRuleset } from "@/lib/skin-upload"
+
+export const RULESET_META: Record<
+  SkinRuleset,
+  { label: string; icon: typeof OsuIcon }
+> = {
+  osu: { label: "osu!", icon: OsuIcon },
+  mania: { label: "osu!mania", icon: OsuManiaIcon },
+  catch: { label: "osu!catch", icon: OsuCatchIcon },
+  taiko: { label: "osu!taiko", icon: OsuTaikoIcon },
+}
+
 function RulesetSvg(props: SVGProps<SVGSVGElement>) {
   return (
     <svg

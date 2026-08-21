@@ -93,6 +93,7 @@ function migrate(db: Database) {
       status TEXT NOT NULL DEFAULT 'pool',
       manual INTEGER NOT NULL DEFAULT 0,
       locked INTEGER NOT NULL DEFAULT 0,
+      ruleset TEXT NOT NULL DEFAULT 'osu',
       beatmap_checksum TEXT NOT NULL,
       beatmap_id INTEGER NOT NULL,
       beatmap_title TEXT NOT NULL,
@@ -150,6 +151,7 @@ function migrate(db: Database) {
   ensureColumn(db, "replays", "manual", "manual INTEGER NOT NULL DEFAULT 0")
   ensureColumn(db, "replays", "locked", "locked INTEGER NOT NULL DEFAULT 0")
   ensureColumn(db, "replays", "score_osu_id", "score_osu_id INTEGER")
+  ensureColumn(db, "replays", "ruleset", "ruleset TEXT NOT NULL DEFAULT 'osu'")
   ensureColumn(db, "skins", "file_path", "file_path TEXT NOT NULL DEFAULT ''")
   ensureColumn(db, "skins", "rulesets", "rulesets TEXT NOT NULL DEFAULT '[]'")
   ensureColumn(db, "skins", "scroll_speed", "scroll_speed REAL")
@@ -325,6 +327,7 @@ export type ReplayRow = {
   status: ReplayStatus
   manual: number
   locked: number
+  ruleset: string
   beatmap_checksum: string
   beatmap_id: number
   beatmap_title: string
@@ -360,6 +363,7 @@ export type NewReplay = {
   fileName: string
   skinName: string | null
   notes: string
+  ruleset: string
   beatmapChecksum: string
   beatmap: {
     id: number
@@ -394,7 +398,7 @@ export type NewReplay = {
 export function insertReplay(input: NewReplay): number {
   const result = getDb().run(
      `INSERT INTO replays (
-       osu_id, file_path, file_name, notes, skin_name, status,
+       osu_id, file_path, file_name, notes, skin_name, status, ruleset,
        beatmap_checksum, beatmap_id, beatmap_title, beatmap_artist, beatmap_creator,
        beatmap_version, beatmap_star_rating, beatmap_max_combo, beatmap_url,
        beatmap_background_url, beatmap_cover_list_url,
@@ -403,13 +407,14 @@ export function insertReplay(input: NewReplay): number {
        score_count_geki, score_count_katu, score_count_300, score_count_100,
        score_count_50, score_count_miss,
        created_at
-     ) VALUES (?, ?, ?, ?, ?, 'pool', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+     ) VALUES (?, ?, ?, ?, ?, 'pool', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       input.osuId,
       "",
       input.fileName,
       input.notes,
       input.skinName,
+      input.ruleset,
       input.beatmapChecksum,
       input.beatmap.id,
       input.beatmap.title,
@@ -686,6 +691,7 @@ export function replayRowToApi(
     beatmapChecksum: row.beatmap_checksum,
     status: row.status,
     manual: row.manual === 1,
+    ruleset: row.ruleset,
     beatmap: {
       id: row.beatmap_id,
       title: row.beatmap_title,
