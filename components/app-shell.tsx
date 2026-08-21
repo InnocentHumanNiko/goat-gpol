@@ -193,7 +193,7 @@ export function AppShell({
           />
         )}
         {tab === "judge" && canJudge(user.role) && (
-          <JudgeTab userOsuId={user.osuId} />
+          <JudgeTab username={user.username} />
         )}
         {tab === "render" && canJudge(user.role) && <RenderTab />}
         {tab === "manage" && canAdmin(user.role) && <ManageTab user={user} />}
