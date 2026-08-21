@@ -64,7 +64,16 @@ export function ScoreStatsPanel({
         />
       </div>
       <div className="flex divide-x overflow-hidden rounded-md border bg-muted/50">
-        {(
+        {( score.ruleset === 3 ?
+          [
+            { label: "300g", value: score.countGeki },
+            { label: "300", value: score.count300 },
+            { label: "200", value: score.countKatu },
+            { label: "100", value: score.count100 },
+            { label: "50", value: score.count50 },
+            { label: "Miss", value: score.countMiss },
+          ] as const
+          :
           [
             { label: "300", value: score.count300 },
             { label: "100", value: score.count100 },

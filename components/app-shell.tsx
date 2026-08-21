@@ -56,6 +56,7 @@ export type ScoreStats = {
   rank: string
   username: string
   date: Date
+  ruleset: number
   totalScore: number
   maxCombo: number
   accuracy: number
