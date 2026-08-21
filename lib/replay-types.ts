@@ -17,6 +17,7 @@ export type BeatmapApi = {
 
 export type ScoreApi = {
   rank: string
+  osuId: number | null
   username: string
   date: number
   totalScore: number

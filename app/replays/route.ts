@@ -10,6 +10,7 @@ import {
   replayRowToApi,
   updateReplayFilePath,
 } from "@/lib/db"
+import { withUserApi } from "@/lib/auth"
 import { getSessionUser } from "@/lib/session"
 import { canAdmin, canJudge } from "@/lib/roles"
 import type { ReplayMetadata } from "@/lib/replay-types"
@@ -123,6 +124,16 @@ export async function POST(request: NextRequest) {
     return Response.json({ error: "invalid metadata" }, { status: 400 })
   }
 
+  let scoreOsuId: number | null = null
+  try {
+    const scoreUser = await withUserApi(user.osu_id, (api) =>
+      api.getUser(input.score.username),
+    )
+    scoreOsuId = scoreUser.id
+  } catch {
+    scoreOsuId = null
+  }
+
   const id = insertReplay({
     osuId: user.osu_id,
     fileName: input.fileName,
@@ -130,7 +141,7 @@ export async function POST(request: NextRequest) {
     notes: input.notes,
     beatmapChecksum: input.beatmapChecksum,
     beatmap: input.beatmap,
-    score: input.score,
+    score: { ...input.score, osuId: scoreOsuId },
   })
 
   const dir = path.join(process.cwd(), "data", "replays")

@@ -105,6 +105,7 @@ function migrate(db: Database) {
       beatmap_background_url TEXT NOT NULL,
       beatmap_cover_list_url TEXT NOT NULL,
       score_rank TEXT NOT NULL,
+      score_osu_id INTEGER,
       score_username TEXT NOT NULL,
       score_date INTEGER NOT NULL,
       score_total INTEGER NOT NULL,
@@ -148,6 +149,7 @@ function migrate(db: Database) {
   ensureColumn(db, "replays", "status", "status TEXT NOT NULL DEFAULT 'pool'")
   ensureColumn(db, "replays", "manual", "manual INTEGER NOT NULL DEFAULT 0")
   ensureColumn(db, "replays", "locked", "locked INTEGER NOT NULL DEFAULT 0")
+  ensureColumn(db, "replays", "score_osu_id", "score_osu_id INTEGER")
   ensureColumn(db, "skins", "file_path", "file_path TEXT NOT NULL DEFAULT ''")
   ensureColumn(db, "skins", "rulesets", "rulesets TEXT NOT NULL DEFAULT '[]'")
   ensureColumn(db, "skins", "type", "type TEXT NOT NULL DEFAULT 'nm'")
@@ -332,6 +334,7 @@ export type ReplayRow = {
   beatmap_background_url: string
   beatmap_cover_list_url: string
   score_rank: string
+  score_osu_id: number | null
   score_username: string
   score_date: number
   score_total: number
@@ -369,6 +372,7 @@ export type NewReplay = {
   }
   score: {
     rank: string
+    osuId: number | null
     username: string
     date: number
     totalScore: number
@@ -386,17 +390,17 @@ export type NewReplay = {
 
 export function insertReplay(input: NewReplay): number {
   const result = getDb().run(
-    `INSERT INTO replays (
+     `INSERT INTO replays (
        osu_id, file_path, file_name, notes, skin_name, status,
        beatmap_checksum, beatmap_id, beatmap_title, beatmap_artist, beatmap_creator,
        beatmap_version, beatmap_star_rating, beatmap_max_combo, beatmap_url,
        beatmap_background_url, beatmap_cover_list_url,
-       score_rank, score_username, score_date, score_total, score_max_combo,
+       score_rank, score_osu_id, score_username, score_date, score_total, score_max_combo,
        score_accuracy, score_mods,
        score_count_geki, score_count_katu, score_count_300, score_count_100,
        score_count_50, score_count_miss,
        created_at
-     ) VALUES (?, ?, ?, ?, ?, 'pool', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+     ) VALUES (?, ?, ?, ?, ?, 'pool', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       input.osuId,
       "",
@@ -415,6 +419,7 @@ export function insertReplay(input: NewReplay): number {
       input.beatmap.backgroundUrl,
       input.beatmap.coverListUrl,
       input.score.rank,
+      input.score.osuId,
       input.score.username,
       input.score.date,
       input.score.totalScore,
@@ -692,6 +697,7 @@ export function replayRowToApi(
     },
     score: {
       rank: row.score_rank,
+      osuId: row.score_osu_id,
       username: row.score_username,
       date: row.score_date,
       totalScore: row.score_total,

@@ -55,6 +55,7 @@ export type BeatmapInfo = {
 
 export type ScoreStats = {
   rank: string
+  osuId?: number | null
   username: string
   date: Date
   totalScore: number
@@ -193,7 +194,7 @@ export function AppShell({
           />
         )}
         {tab === "judge" && canJudge(user.role) && (
-          <JudgeTab username={user.username} />
+          <JudgeTab userOsuId={user.osuId} />
         )}
         {tab === "render" && canJudge(user.role) && <RenderTab />}
         {tab === "manage" && canAdmin(user.role) && <ManageTab user={user} />}

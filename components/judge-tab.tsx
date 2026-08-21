@@ -26,15 +26,14 @@ function JudgeDialog({
   replay,
   onJudged,
   disabled,
-  username,
+  userOsuId,
 }: {
   replay: Replay
   onJudged: (updated: Replay) => void
   disabled: boolean
-  username: string
+  userOsuId: number
 }) {
-  const isOwnScore =
-    replay.score.username.toLowerCase() === username.toLowerCase()
+  const isOwnScore = replay.score.osuId === userOsuId
   const [score, setScore] = useState(replay.myJudgment?.score ?? 0)
   const [comment, setComment] = useState(replay.myJudgment?.comment ?? "")
   const [open, setOpen] = useState(false)
@@ -175,7 +174,7 @@ function JudgeDialog({
   )
 }
 
-export function JudgeTab({ username }: { username: string }) {
+export function JudgeTab({ userOsuId }: { userOsuId: number }) {
   const [replays, setReplays] = useState<Replay[]>([])
   const [loaded, setLoaded] = useState(false)
   const [failed, setFailed] = useState(false)
@@ -259,7 +258,7 @@ export function JudgeTab({ username }: { username: string }) {
                     replay={replay}
                     onJudged={handleJudged}
                     disabled={replay.manual}
-                    username={username}
+                    userOsuId={userOsuId}
                   />
                 </>
               }
