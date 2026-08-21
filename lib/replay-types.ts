@@ -67,8 +67,6 @@ export type SkinApi = {
   id: number
   name: string
   rulesets: string[]
-  type: string
-  description: string
   scrollSpeed: number | null
   createdAt: number
   submitter: { osuId: number; username: string }

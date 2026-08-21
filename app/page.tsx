@@ -32,8 +32,6 @@ export default async function HomePage({
         id: skin.id,
         name: skin.name,
         rulesets: JSON.parse(skin.rulesets) as string[],
-        type: skin.type,
-        description: skin.description,
         scrollSpeed: skin.scroll_speed,
         createdAt: skin.created_at,
         submitter: { osuId: skin.osu_id, username: skin.uploader_username },

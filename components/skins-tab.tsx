@@ -21,27 +21,14 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Input } from "@/components/ui/input"
-import {
-  Select,
-  SelectItem,
-  SelectItemText,
-  SelectPopup,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
 import { Slider } from "@/components/ui/slider"
 import { Spinner } from "@/components/ui/spinner"
-import { Textarea } from "@/components/ui/textarea"
 import {
   IconChevronDown,
   IconPalette,
   IconUpload,
 } from "@tabler/icons-react"
-import type {
-  SkinRuleset,
-  SkinType,
-  UploadProgress,
-} from "@/lib/skin-upload"
+import type { SkinRuleset, UploadProgress } from "@/lib/skin-upload"
 import { cn } from "@/lib/utils"
 import {
   OsuCatchIcon,
@@ -62,15 +49,6 @@ const RULESET_OPTIONS: {
   { id: "taiko", label: "osu!taiko", icon: OsuTaikoIcon },
 ]
 
-const TYPE_OPTIONS: { id: SkinType; label: string }[] = [
-  { id: "nm", label: "Main (NM)" },
-  { id: "hd", label: "HD" },
-  { id: "hr", label: "(HD)HR" },
-  { id: "dt", label: "(HD)(HR)DT (High AR)" },
-  { id: "low_ar", label: "Low AR (<AR9)" },
-  { id: "extra", label: "Extra" },
-]
-
 function SkinUploadForm({
   onUpload,
 }: {
@@ -79,16 +57,12 @@ function SkinUploadForm({
     file: File,
     onProgress?: (progress: UploadProgress) => void,
     rulesets?: SkinRuleset[],
-    type?: SkinType,
-    description?: string,
     scrollSpeed?: number,
   ) => Promise<void>
 }) {
   const [name, setName] = useState("")
   const [file, setFile] = useState<File | null>(null)
   const [rulesets, setRulesets] = useState<SkinRuleset[]>(["osu"])
-  const [type, setType] = useState<SkinType>("nm")
-  const [description, setDescription] = useState("")
   const [scrollSpeed, setScrollSpeed] = useState(25)
   const [uploading, setUploading] = useState(false)
   const [progress, setProgress] = useState<UploadProgress | null>(null)
@@ -117,8 +91,6 @@ function SkinUploadForm({
         file,
         setProgress,
         [...rulesets],
-        type,
-        description.trim(),
         rulesets.includes("mania") ? scrollSpeed : undefined,
       )
     } catch {
@@ -196,38 +168,6 @@ function SkinUploadForm({
           </div>
         )}
         <div className="flex flex-col gap-1.5">
-          <span className="text-sm font-medium">Type</span>
-          <Select value={type} onValueChange={(value) => setType(value as SkinType)}>
-            <SelectTrigger>
-              <SelectValue>
-                {TYPE_OPTIONS.find((option) => option.id === type)?.label}
-              </SelectValue>
-            </SelectTrigger>
-            <SelectPopup>
-              {TYPE_OPTIONS.map((option) => (
-                <SelectItem key={option.id} value={option.id}>
-                  <SelectItemText>{option.label}</SelectItemText>
-                </SelectItem>
-              ))}
-            </SelectPopup>
-          </Select>
-        </div>
-        {type === "extra" && (
-          <div className="flex flex-col gap-1.5">
-            <label htmlFor="skin-description" className="text-sm font-medium">
-              Skin description
-            </label>
-            <Textarea
-              id="skin-description"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="Explain where this skin should be used."
-              maxLength={500}
-              className="resize-none"
-            />
-          </div>
-        )}
-        <div className="flex flex-col gap-1.5">
           <label htmlFor="skin-name" className="text-sm font-medium">
             Skin name
           </label>
@@ -286,8 +226,6 @@ export function SkinsTab({
     file: File,
     onProgress?: (progress: UploadProgress) => void,
     rulesets?: SkinRuleset[],
-    type?: SkinType,
-    description?: string,
     scrollSpeed?: number,
   ) => Promise<void>
   canSubmit: boolean
@@ -299,11 +237,9 @@ export function SkinsTab({
     file: File,
     onProgress?: (progress: UploadProgress) => void,
     rulesets?: SkinRuleset[],
-    type?: SkinType,
-    description?: string,
     scrollSpeed?: number,
   ) => {
-    await onUpload(name, file, onProgress, rulesets, type, description, scrollSpeed)
+    await onUpload(name, file, onProgress, rulesets, scrollSpeed)
     setOpen(false)
   }
 
