@@ -12,6 +12,7 @@ import { canAdmin, canJudge } from "@/lib/roles"
 import {
   uploadSkin,
   type SkinRuleset,
+  type SkinType,
   type UploadProgress,
 } from "@/lib/skin-upload"
 import { cn } from "@/lib/utils"
@@ -32,6 +33,9 @@ export type Skin = {
   id: number
   name: string
   rulesets: string[]
+  type: string
+  description: string
+  scrollSpeed: number | null
   createdAt: number
 }
 
@@ -123,8 +127,19 @@ export function AppShell({
     file: File,
     onProgress?: (progress: UploadProgress) => void,
     rulesets: SkinRuleset[] = [],
+    type: SkinType = "nm",
+    description = "",
+    scrollSpeed?: number,
   ) => {
-    const created = await uploadSkin({ name, file, rulesets, onProgress })
+    const created = await uploadSkin({
+      name,
+      file,
+      rulesets,
+      type,
+      description,
+      scrollSpeed,
+      onProgress,
+    })
     setSkins((prev) => [created, ...prev])
   }
 

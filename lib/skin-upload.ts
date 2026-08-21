@@ -4,6 +4,10 @@ export const SKIN_RULESETS = ["osu", "mania", "catch", "taiko"] as const
 
 export type SkinRuleset = (typeof SKIN_RULESETS)[number]
 
+export const SKIN_TYPES = ["nm", "hd", "hr", "dt", "low_ar", "extra"] as const
+
+export type SkinType = (typeof SKIN_TYPES)[number]
+
 export type UploadProgress = {
   percent: number
   mbps: number
@@ -13,11 +17,17 @@ export function uploadSkin({
   name,
   file,
   rulesets,
+  type,
+  description,
+  scrollSpeed,
   onProgress,
 }: {
   name: string
   file: File
   rulesets: SkinRuleset[]
+  type: SkinType
+  description?: string
+  scrollSpeed?: number
   onProgress?: (progress: UploadProgress) => void
 }): Promise<SkinApi> {
   return new Promise((resolve, reject) => {
@@ -25,7 +35,12 @@ export function uploadSkin({
       name,
       fileName: file.name,
       rulesets: rulesets.join(","),
+      type,
+      description: description ?? "",
     })
+    if (scrollSpeed !== undefined) {
+      params.set("scrollSpeed", String(scrollSpeed))
+    }
     const xhr = new XMLHttpRequest()
     xhr.open("POST", `/skins?${params}`)
     xhr.responseType = "json"

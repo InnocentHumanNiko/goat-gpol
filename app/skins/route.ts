@@ -14,7 +14,7 @@ import {
   updateSkinFilePath,
 } from "@/lib/db"
 import { getSessionUser } from "@/lib/session"
-import { SKIN_RULESETS } from "@/lib/skin-upload"
+import { SKIN_RULESETS, SKIN_TYPES } from "@/lib/skin-upload"
 
 export const dynamic = "force-dynamic"
 
@@ -24,12 +24,29 @@ const OSK_MAGIC = Buffer.from([0x50, 0x4b, 0x03, 0x04])
 
 const VALID_RULESETS = new Set<string>(SKIN_RULESETS)
 
+const VALID_TYPES = new Set<string>(SKIN_TYPES)
+
 function parseRulesets(raw: string | null): string[] | null {
   const rulesets = (raw ?? "")
     .split(",")
     .map((r) => r.trim())
     .filter((r) => VALID_RULESETS.has(r))
   return rulesets.length > 0 ? [...new Set(rulesets)] : null
+}
+
+function parseType(raw: string | null): string | null {
+  return raw !== null && VALID_TYPES.has(raw) ? raw : null
+}
+
+function parseScrollSpeed(raw: string | null): number | null {
+  if (raw === null || raw === "") {
+    return null
+  }
+  const value = Number(raw)
+  if (!Number.isFinite(value) || value < 1 || value > 40) {
+    return null
+  }
+  return Math.round(value * 2) / 2
 }
 
 class SkinUploadError extends Error {
@@ -66,6 +83,9 @@ export async function GET() {
       id: skin.id,
       name: skin.name,
       rulesets: JSON.parse(skin.rulesets) as string[],
+      type: skin.type,
+      description: skin.description,
+      scrollSpeed: skin.scroll_speed,
       createdAt: skin.created_at,
     })),
   )
@@ -83,11 +103,29 @@ export async function POST(request: NextRequest) {
   const name = (request.nextUrl.searchParams.get("name") ?? "").trim()
   const fileName = request.nextUrl.searchParams.get("fileName") ?? ""
   const rulesets = parseRulesets(request.nextUrl.searchParams.get("rulesets"))
+  const type = parseType(request.nextUrl.searchParams.get("type"))
+  const scrollSpeed = parseScrollSpeed(
+    request.nextUrl.searchParams.get("scrollSpeed"),
+  )
+  const description = (
+    request.nextUrl.searchParams.get("description") ?? ""
+  )
+    .trim()
+    .slice(0, 500)
   if (!name || name.length > 100) {
     return Response.json({ error: "invalid name" }, { status: 400 })
   }
   if (!rulesets) {
     return Response.json({ error: "invalid rulesets" }, { status: 400 })
+  }
+  if (!type) {
+    return Response.json({ error: "invalid type" }, { status: 400 })
+  }
+  if (
+    request.nextUrl.searchParams.get("scrollSpeed") !== null &&
+    scrollSpeed === null
+  ) {
+    return Response.json({ error: "invalid scroll speed" }, { status: 400 })
   }
   if (!fileName.toLowerCase().endsWith(".osk")) {
     return Response.json({ error: "invalid file type" }, { status: 400 })
@@ -100,7 +138,14 @@ export async function POST(request: NextRequest) {
     return Response.json({ error: "missing file" }, { status: 400 })
   }
 
-  const id = insertSkin(user.osu_id, name, JSON.stringify(rulesets))
+  const id = insertSkin(
+    user.osu_id,
+    name,
+    JSON.stringify(rulesets),
+    type,
+    description,
+    scrollSpeed,
+  )
 
   const dir = path.join(process.cwd(), "data", "skins")
   await mkdir(dir, { recursive: true })
@@ -134,6 +179,9 @@ export async function POST(request: NextRequest) {
       id: row.id,
       name: row.name,
       rulesets: JSON.parse(row.rulesets) as string[],
+      type: row.type,
+      description: row.description,
+      scrollSpeed: row.scroll_speed,
       createdAt: row.created_at,
     },
     { status: 201 },
