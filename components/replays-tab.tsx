@@ -28,14 +28,37 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
-import { IconExternalLink, IconFile, IconUpload } from "@tabler/icons-react"
+import {
+  IconExternalLink,
+  IconFile,
+  IconUpload,
+} from "@tabler/icons-react"
 import { decodeReplayFile, type DecodedScore } from "@/lib/replay-decode"
+import type { SkinRuleset } from "@/lib/skin-upload"
+import {
+  OsuCatchIcon,
+  OsuIcon,
+  OsuManiaIcon,
+  OsuTaikoIcon,
+} from "@/components/ruleset-icons"
 import type {
   BeatmapInfo,
   Replay,
   ReplayInput,
   Skin,
 } from "@/components/app-shell"
+
+const RULESET_META: Record<
+  SkinRuleset,
+  { label: string; icon: typeof OsuIcon }
+> = {
+  osu: { label: "osu!", icon: OsuIcon },
+  mania: { label: "osu!mania", icon: OsuManiaIcon },
+  catch: { label: "osu!catch", icon: OsuCatchIcon },
+  taiko: { label: "osu!taiko", icon: OsuTaikoIcon },
+}
+
+const DEFAULT_SKIN_ID = "default"
 
 type ConfirmData = {
   file: File
@@ -55,13 +78,44 @@ function ReplaySubmitForm({
   onSubmit: (input: ReplayInput, file: File) => Promise<void>
 }) {
   const [file, setFile] = useState<File | null>(null)
-  const [skinId, setSkinId] = useState("")
+  const [ruleset, setRuleset] = useState<SkinRuleset | null>(null)
+  const [detecting, setDetecting] = useState(false)
+  const [skinId, setSkinId] = useState(DEFAULT_SKIN_ID)
   const [notes, setNotes] = useState("")
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [confirm, setConfirm] = useState<ConfirmData | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
+
+  const handleFileChange = async (picked: File | null) => {
+    setFile(picked)
+    setRuleset(null)
+    setSkinId(DEFAULT_SKIN_ID)
+    if (!picked) {
+      return
+    }
+    setDetecting(true)
+    try {
+      const score = await decodeReplayFile(picked)
+      setRuleset(score.ruleset)
+    } catch {
+      setRuleset(null)
+    } finally {
+      setDetecting(false)
+    }
+  }
+
+  const compatibleSkins = ruleset
+    ? skins.filter((skin) => skin.rulesets.includes(ruleset))
+    : []
+
+  const rulesetMeta = ruleset ? RULESET_META[ruleset] : null
+
+  const selectedSkinName =
+    skinId === DEFAULT_SKIN_ID
+      ? "Default"
+      : compatibleSkins.find((skin) => String(skin.id) === skinId)?.name
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault()
@@ -88,7 +142,10 @@ function ReplaySubmitForm({
         beatmapChecksum: score.beatmapHash,
         beatmap,
         score,
-        skinName: skins.find((s) => s.id === Number(skinId))?.name ?? null,
+        skinName:
+          skinId === DEFAULT_SKIN_ID
+            ? null
+            : skins.find((s) => s.id === Number(skinId))?.name ?? null,
         notes: notes.trim(),
       })
     } catch (err) {
@@ -218,8 +275,19 @@ function ReplaySubmitForm({
             accept=".osr"
             label="Choose a .osr replay"
             hint="or drag and drop it here"
-            onFileChange={setFile}
+            onFileChange={handleFileChange}
           />
+          {file && detecting && (
+            <p className="text-xs text-muted-foreground">
+              Detecting ruleset…
+            </p>
+          )}
+          {file && !detecting && rulesetMeta && (
+            <p className="flex items-center gap-1.5 text-sm font-medium text-foreground">
+              <rulesetMeta.icon className="size-3.5" />
+              {rulesetMeta.label}
+            </p>
+          )}
         </div>
         <div className="flex flex-col gap-1.5">
           <label htmlFor="replay-skin" className="text-sm font-medium">
@@ -228,15 +296,26 @@ function ReplaySubmitForm({
           <Select
             value={skinId}
             onValueChange={(value) => setSkinId(value ?? "")}
-            disabled={skins.length === 0}
+            disabled={!ruleset || compatibleSkins.length === 0}
           >
             <SelectTrigger id="replay-skin">
               <SelectValue
-                placeholder={skins.length === 0 ? "None selected" : "Select a skin"}
-              />
+                placeholder={
+                  !ruleset
+                    ? "Pick a replay first"
+                    : compatibleSkins.length === 0
+                      ? "No skins for this ruleset"
+                      : "Select a skin"
+                }
+              >
+                {selectedSkinName}
+              </SelectValue>
             </SelectTrigger>
             <SelectPopup>
-              {skins.map((skin) => (
+              <SelectItem value={DEFAULT_SKIN_ID}>
+                <SelectItemText>Default</SelectItemText>
+              </SelectItem>
+              {compatibleSkins.map((skin) => (
                 <SelectItem key={skin.id} value={String(skin.id)}>
                   <SelectItemText>{skin.name}</SelectItemText>
                 </SelectItem>
