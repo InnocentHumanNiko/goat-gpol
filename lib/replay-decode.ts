@@ -5,7 +5,6 @@ import { decompress } from "lzma-js-simple-v2"
 import type { SkinRuleset } from "./skin-upload"
 
 export type DecodedScore = {
-  ruleset: number
   beatmapHash: string
   username: string
   date: Date
@@ -13,6 +12,7 @@ export type DecodedScore = {
   totalScore: number
   maxCombo: number
   accuracy: number
+  accuracyv2: number
   mods: string[]
   countGeki: number
   countKatu: number
@@ -21,6 +21,7 @@ export type DecodedScore = {
   count50: number
   countMiss: number
   ruleset: SkinRuleset
+  isLazer: boolean
 }
 
 const MODE_RULESETS: Record<number, SkinRuleset> = {
@@ -181,8 +182,14 @@ export async function decodeReplayFile(file: File): Promise<DecodedScore> {
     mods.push("CL")
   }
 
+  const ruleset = rulesetFromModeId(typeof info.rulesetId === "number" ? info.rulesetId : 0,)
+
+  var accuracyv2 = info.accuracy
+  if (ruleset === "mania") {
+    accuracyv2=(info.countGeki*305+info.count300*300+info.countKatu*200+info.count100*100+info.count50*50)/(305*(info.countGeki+info.count300+info.countKatu+info.count100+info.count50+info.countMiss))
+  }
+
   return {
-    ruleset: info.ruleset,
     beatmapHash: info.beatmapHashMD5,
     username: info.username,
     date: info.date,
@@ -190,6 +197,7 @@ export async function decodeReplayFile(file: File): Promise<DecodedScore> {
     totalScore: info.totalScore,
     maxCombo: info.maxCombo,
     accuracy: info.accuracy,
+    accuracyv2: accuracyv2,
     mods: mods,
     countGeki: info.countGeki,
     countKatu: info.countKatu,
@@ -197,8 +205,7 @@ export async function decodeReplayFile(file: File): Promise<DecodedScore> {
     count100: info.count100,
     count50: info.count50,
     countMiss: info.countMiss,
-    ruleset: rulesetFromModeId(
-      typeof info.rulesetId === "number" ? info.rulesetId : 0,
-    ),
+    ruleset: ruleset,
+    isLazer: !isStableReplay,
   }
 }
