@@ -2,6 +2,8 @@ import { ScoreDecoder } from "osu-parsers"
 import { ModBitwise } from "osu-classes"
 import { decompress } from "lzma-js-simple-v2"
 
+import type { SkinRuleset } from "./skin-upload"
+
 export type DecodedScore = {
   ruleset: number
   beatmapHash: string
@@ -18,6 +20,18 @@ export type DecodedScore = {
   count100: number
   count50: number
   countMiss: number
+  ruleset: SkinRuleset
+}
+
+const MODE_RULESETS: Record<number, SkinRuleset> = {
+  0: "osu",
+  1: "taiko",
+  2: "catch",
+  3: "mania",
+}
+
+function rulesetFromModeId(modeId: number): SkinRuleset {
+  return MODE_RULESETS[modeId] ?? "osu"
 }
 
 const MOD_ORDER: { bit: ModBitwise; acronym: string }[] = [
@@ -183,5 +197,8 @@ export async function decodeReplayFile(file: File): Promise<DecodedScore> {
     count100: info.count100,
     count50: info.count50,
     countMiss: info.countMiss,
+    ruleset: rulesetFromModeId(
+      typeof info.rulesetId === "number" ? info.rulesetId : 0,
+    ),
   }
 }

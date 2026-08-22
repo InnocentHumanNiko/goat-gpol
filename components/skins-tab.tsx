@@ -21,44 +21,32 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Input } from "@/components/ui/input"
-import {
-  Select,
-  SelectItem,
-  SelectItemText,
-  SelectPopup,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
 import { Slider } from "@/components/ui/slider"
 import { Spinner } from "@/components/ui/spinner"
-import { Textarea } from "@/components/ui/textarea"
 import {
   IconChevronDown,
   IconPalette,
   IconUpload,
 } from "@tabler/icons-react"
-import type {
-  SkinRuleset,
-  SkinType,
-  UploadProgress,
-} from "@/lib/skin-upload"
+import type { SkinRuleset, UploadProgress } from "@/lib/skin-upload"
 import { cn } from "@/lib/utils"
+import {
+  OsuCatchIcon,
+  OsuIcon,
+  OsuManiaIcon,
+  OsuTaikoIcon,
+} from "@/components/ruleset-icons"
 import type { Skin } from "@/components/app-shell"
 
-const RULESET_OPTIONS: { id: SkinRuleset; label: string }[] = [
-  { id: "osu", label: "osu!" },
-  { id: "mania", label: "osu!mania" },
-  { id: "catch", label: "osu!catch" },
-  { id: "taiko", label: "osu!taiko" },
-]
-
-const TYPE_OPTIONS: { id: SkinType; label: string }[] = [
-  { id: "nm", label: "Main (NM)" },
-  { id: "hd", label: "HD" },
-  { id: "hr", label: "(HD)HR" },
-  { id: "dt", label: "(HD)(HR)DT (High AR)" },
-  { id: "low_ar", label: "Low AR (<AR9)" },
-  { id: "extra", label: "Extra" },
+const RULESET_OPTIONS: {
+  id: SkinRuleset
+  label: string
+  icon: typeof OsuIcon
+}[] = [
+  { id: "osu", label: "osu!", icon: OsuIcon },
+  { id: "mania", label: "osu!mania", icon: OsuManiaIcon },
+  { id: "catch", label: "osu!catch", icon: OsuCatchIcon },
+  { id: "taiko", label: "osu!taiko", icon: OsuTaikoIcon },
 ]
 
 function SkinUploadForm({
@@ -69,16 +57,12 @@ function SkinUploadForm({
     file: File,
     onProgress?: (progress: UploadProgress) => void,
     rulesets?: SkinRuleset[],
-    type?: SkinType,
-    description?: string,
     scrollSpeed?: number,
   ) => Promise<void>
 }) {
   const [name, setName] = useState("")
   const [file, setFile] = useState<File | null>(null)
   const [rulesets, setRulesets] = useState<SkinRuleset[]>(["osu"])
-  const [type, setType] = useState<SkinType>("nm")
-  const [description, setDescription] = useState("")
   const [scrollSpeed, setScrollSpeed] = useState(25)
   const [uploading, setUploading] = useState(false)
   const [progress, setProgress] = useState<UploadProgress | null>(null)
@@ -107,8 +91,6 @@ function SkinUploadForm({
         file,
         setProgress,
         [...rulesets],
-        type,
-        description.trim(),
         rulesets.includes("mania") ? scrollSpeed : undefined,
       )
     } catch {
@@ -157,7 +139,10 @@ function SkinUploadForm({
                   }
                   closeOnClick={false}
                 >
-                  {option.label}
+                  <span className="flex items-center gap-2">
+                    <option.icon className="size-3.5 shrink-0" />
+                    {option.label}
+                  </span>
                 </DropdownMenuCheckboxItem>
               ))}
             </DropdownMenuContent>
@@ -179,38 +164,6 @@ function SkinUploadForm({
               min={1}
               max={40}
               step={0.5}
-            />
-          </div>
-        )}
-        <div className="flex flex-col gap-1.5">
-          <span className="text-sm font-medium">Type</span>
-          <Select value={type} onValueChange={(value) => setType(value as SkinType)}>
-            <SelectTrigger>
-              <SelectValue>
-                {TYPE_OPTIONS.find((option) => option.id === type)?.label}
-              </SelectValue>
-            </SelectTrigger>
-            <SelectPopup>
-              {TYPE_OPTIONS.map((option) => (
-                <SelectItem key={option.id} value={option.id}>
-                  <SelectItemText>{option.label}</SelectItemText>
-                </SelectItem>
-              ))}
-            </SelectPopup>
-          </Select>
-        </div>
-        {type === "extra" && (
-          <div className="flex flex-col gap-1.5">
-            <label htmlFor="skin-description" className="text-sm font-medium">
-              Skin description
-            </label>
-            <Textarea
-              id="skin-description"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="explain wtf is this skin"
-              maxLength={500}
-              className="resize-none"
             />
           </div>
         )}
@@ -273,8 +226,6 @@ export function SkinsTab({
     file: File,
     onProgress?: (progress: UploadProgress) => void,
     rulesets?: SkinRuleset[],
-    type?: SkinType,
-    description?: string,
     scrollSpeed?: number,
   ) => Promise<void>
   canSubmit: boolean
@@ -286,11 +237,9 @@ export function SkinsTab({
     file: File,
     onProgress?: (progress: UploadProgress) => void,
     rulesets?: SkinRuleset[],
-    type?: SkinType,
-    description?: string,
     scrollSpeed?: number,
   ) => {
-    await onUpload(name, file, onProgress, rulesets, type, description, scrollSpeed)
+    await onUpload(name, file, onProgress, rulesets, scrollSpeed)
     setOpen(false)
   }
 
@@ -329,13 +278,26 @@ export function SkinsTab({
               key={skin.id}
               className="flex items-center justify-between gap-4 px-4 py-3"
             >
-              <div className="flex min-w-0 items-center gap-2">
-                <IconPalette className="size-4 shrink-0 text-muted-foreground" />
-                <span className="truncate text-sm font-medium">{skin.name}</span>
+              <div className="flex min-w-0 items-start gap-2">
+                <IconPalette className="size-4 shrink-0 translate-y-0.5 text-muted-foreground" />
+                <div className="flex min-w-0 flex-col gap-0.5">
+                  <span className="truncate text-sm font-medium">
+                    {skin.name}
+                  </span>
+                  <p className="text-xs text-muted-foreground">
+                    Uploaded by{" "}
+                    <a
+                      href={`https://osu.ppy.sh/users/${skin.submitter.osuId}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="font-medium text-foreground hover:underline underline-offset-2"
+                    >
+                      {skin.submitter.username}
+                    </a>{" "}
+                    on {new Date(skin.createdAt).toLocaleDateString()}
+                  </p>
+                </div>
               </div>
-              <span className="shrink-0 text-xs text-muted-foreground">
-                {new Date(skin.createdAt).toLocaleDateString()}
-              </span>
             </li>
           ))}
         </ul>

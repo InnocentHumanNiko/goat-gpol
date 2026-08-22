@@ -7,7 +7,6 @@ import {
   Dialog,
   DialogClose,
   DialogContent,
-  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -63,12 +62,8 @@ export function VotingStatsDialog({ replay }: { replay: Replay }) {
         <IconChartBar />
       </DialogTrigger>
       <DialogContent>
-        <DialogHeader>
+        <DialogHeader className="mb-4">
           <DialogTitle>Voting stats</DialogTitle>
-          <DialogDescription>
-            {replay.beatmap.artist} - {replay.beatmap.title} [
-            {replay.beatmap.version}]
-          </DialogDescription>
         </DialogHeader>
         {failed ? (
           <p className="text-sm text-muted-foreground">
@@ -79,36 +74,49 @@ export function VotingStatsDialog({ replay }: { replay: Replay }) {
         ) : judgments.length === 0 ? (
           <p className="text-sm text-muted-foreground">No votes yet.</p>
         ) : (
-          <ul className="flex flex-col divide-y overflow-hidden rounded-md border">
-            {judgments.map((judgment) => (
-              <li key={judgment.id} className="flex flex-col gap-1 px-3 py-2">
-                <div className="flex items-center justify-between gap-2">
-                  <span className="flex min-w-0 items-center gap-2">
-                    <Avatar size="sm">
-                      <AvatarImage
-                        src={judgment.judgeAvatarUrl}
-                        alt={`${judgment.judgeUsername} avatar`}
-                      />
-                      <AvatarFallback>
-                        {judgment.judgeUsername.slice(0, 1).toUpperCase()}
-                      </AvatarFallback>
-                    </Avatar>
-                    <span className="truncate text-sm font-medium">
-                      {judgment.judgeUsername}
+          <div className="flex flex-col gap-3">
+            <div className="flex items-center justify-between rounded-md border px-3 py-2">
+              <span className="text-sm text-muted-foreground">
+                Average Score
+              </span>
+              <span className="text-sm font-semibold tabular-nums">
+                {(
+                  judgments.reduce((sum, judgment) => sum + judgment.score, 0) /
+                  judgments.length
+                ).toFixed(2)}
+              </span>
+            </div>
+            <ul className="flex flex-col divide-y overflow-hidden rounded-md border">
+              {judgments.map((judgment) => (
+                <li key={judgment.id} className="flex flex-col gap-1 px-3 py-2">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="flex min-w-0 items-center gap-2">
+                      <Avatar size="sm">
+                        <AvatarImage
+                          src={judgment.judgeAvatarUrl}
+                          alt={`${judgment.judgeUsername} avatar`}
+                        />
+                        <AvatarFallback>
+                          {judgment.judgeUsername.slice(0, 1).toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+                      <span className="truncate text-sm font-medium">
+                        {judgment.judgeUsername}
+                      </span>
                     </span>
-                  </span>
-                  <span className="text-sm font-medium tabular-nums">
-                    {judgment.score.toFixed(2)}
-                  </span>
-                </div>
-                {judgment.comment && (
-                  <p className="text-sm text-muted-foreground">
-                    {judgment.comment}
-                  </p>
-                )}
-              </li>
-            ))}
-          </ul>
+                    <span className="text-sm font-medium tabular-nums">
+                      {judgment.score.toFixed(2)}
+                    </span>
+                  </div>
+                  {judgment.comment && (
+                    <p className="text-sm text-muted-foreground">
+                      {judgment.comment}
+                    </p>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </div>
         )}
         <DialogFooter className="mt-4">
           <DialogClose render={<Button variant="outline" />}>

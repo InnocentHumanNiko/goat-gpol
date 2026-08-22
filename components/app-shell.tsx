@@ -12,7 +12,6 @@ import { canAdmin, canJudge } from "@/lib/roles"
 import {
   uploadSkin,
   type SkinRuleset,
-  type SkinType,
   type UploadProgress,
 } from "@/lib/skin-upload"
 import { cn } from "@/lib/utils"
@@ -33,10 +32,9 @@ export type Skin = {
   id: number
   name: string
   rulesets: string[]
-  type: string
-  description: string
   scrollSpeed: number | null
   createdAt: number
+  submitter: { osuId: number; username: string }
 }
 
 export type BeatmapInfo = {
@@ -54,6 +52,7 @@ export type BeatmapInfo = {
 
 export type ScoreStats = {
   rank: string
+  osuId?: number | null
   username: string
   date: Date
   ruleset: number
@@ -76,6 +75,7 @@ export type ReplayInput = {
   beatmapChecksum: string
   beatmap: BeatmapInfo
   score: ScoreStats
+  ruleset: SkinRuleset
 }
 
 export type Replay = ReplayInput & {
@@ -103,6 +103,7 @@ export function replayFromApi(api: ReplayApi): Replay {
     myJudgment: api.myJudgment,
     judgmentSummary: api.judgmentSummary,
     submitter: api.submitter,
+    ruleset: api.ruleset as SkinRuleset,
   }
 }
 
@@ -128,16 +129,12 @@ export function AppShell({
     file: File,
     onProgress?: (progress: UploadProgress) => void,
     rulesets: SkinRuleset[] = [],
-    type: SkinType = "nm",
-    description = "",
     scrollSpeed?: number,
   ) => {
     const created = await uploadSkin({
       name,
       file,
       rulesets,
-      type,
-      description,
       scrollSpeed,
       onProgress,
     })
@@ -153,6 +150,7 @@ export function AppShell({
         fileName: input.fileName,
         skinName: input.skinName,
         notes: input.notes,
+        ruleset: input.ruleset,
         beatmapChecksum: input.beatmapChecksum,
         beatmap: input.beatmap,
         score: { ...input.score, date: input.score.date.getTime() },
@@ -160,7 +158,16 @@ export function AppShell({
     )
     const res = await fetch("/replays", { method: "POST", body: form })
     if (!res.ok) {
-      throw new Error("submit-failed")
+      const body = (await res.json().catch(() => null)) as {
+        error?: string
+      } | null
+      throw new Error(
+        body?.error === "replay-already-submitted"
+          ? "duplicate-own"
+          : body?.error === "replay-submitted-by-other"
+            ? "duplicate-other"
+            : "submit-failed",
+      )
     }
     const created = (await res.json()) as ReplayApi
     setReplays((prev) => [replayFromApi(created), ...prev])

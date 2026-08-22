@@ -70,6 +70,9 @@ export async function PUT(
   if (!replay) {
     return Response.json({ error: "not found" }, { status: 404 })
   }
+  if (replay.score_osu_id === user.osu_id) {
+    return Response.json({ error: "forbidden" }, { status: 403 })
+  }
   const input = parseScoreComment(await request.json().catch(() => null))
   if (!input) {
     return Response.json({ error: "invalid score or comment" }, { status: 400 })

@@ -33,7 +33,7 @@ function JudgeDialog({
   disabled: boolean
   userOsuId: number
 }) {
-  const isOwn = replay.submitter.osuId === userOsuId
+  const isOwnScore = replay.score.osuId === userOsuId
   const [score, setScore] = useState(replay.myJudgment?.score ?? 0)
   const [comment, setComment] = useState(replay.myJudgment?.comment ?? "")
   const [open, setOpen] = useState(false)
@@ -65,8 +65,8 @@ function JudgeDialog({
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      {disabled || isOwn ? (
-        isOwn && !disabled ? (
+      {disabled || isOwnScore ? (
+        isOwnScore && !disabled ? (
           <Tooltip>
             <TooltipTrigger render={<span className="inline-flex" />}>
               <Button

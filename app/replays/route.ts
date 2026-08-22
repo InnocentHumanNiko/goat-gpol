@@ -3,6 +3,7 @@ import path from "node:path"
 import { NextRequest } from "next/server"
 
 import {
+  findDuplicateReplay,
   getReplayById,
   insertReplay,
   listReplays,
@@ -10,6 +11,7 @@ import {
   replayRowToApi,
   updateReplayFilePath,
 } from "@/lib/db"
+import { withUserApi } from "@/lib/auth"
 import { getSessionUser } from "@/lib/session"
 import { canAdmin, canJudge } from "@/lib/roles"
 import type { ReplayMetadata } from "@/lib/replay-types"
@@ -39,6 +41,8 @@ function parseReplayMetadata(raw: string): ReplayMetadata | null {
       str(value.fileName) &&
       (value.skinName === null || str(value.skinName)) &&
       str(value.notes) &&
+      str(value.ruleset) &&
+      ["osu", "taiko", "catch", "mania"].includes(value.ruleset) &&
       str(value.beatmapChecksum) &&
       num(beatmap.id) &&
       str(beatmap.title) &&
@@ -123,14 +127,43 @@ export async function POST(request: NextRequest) {
     return Response.json({ error: "invalid metadata" }, { status: 400 })
   }
 
+  let scoreOsuId: number | null = null
+  try {
+    const scoreUser = await withUserApi(user.osu_id, (api) =>
+      api.getUser(input.score.username),
+    )
+    scoreOsuId = scoreUser.id
+  } catch {
+    scoreOsuId = null
+  }
+
+  const duplicate = findDuplicateReplay(
+    input.beatmapChecksum,
+    scoreOsuId,
+    input.score.username,
+    input.score.date,
+  )
+  if (duplicate) {
+    return Response.json(
+      {
+        error:
+          duplicate.osu_id === user.osu_id
+            ? "replay-already-submitted"
+            : "replay-submitted-by-other",
+      },
+      { status: 409 },
+    )
+  }
+
   const id = insertReplay({
     osuId: user.osu_id,
     fileName: input.fileName,
     skinName: input.skinName,
     notes: input.notes,
+    ruleset: input.ruleset,
     beatmapChecksum: input.beatmapChecksum,
     beatmap: input.beatmap,
-    score: input.score,
+    score: { ...input.score, osuId: scoreOsuId },
   })
 
   const dir = path.join(process.cwd(), "data", "replays")

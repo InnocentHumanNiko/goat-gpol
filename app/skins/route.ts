@@ -10,11 +10,14 @@ import {
   deleteSkin,
   getSkinById,
   insertSkin,
+  listSkins,
   listSkinsByUser,
   updateSkinFilePath,
+  type SkinWithUploader,
 } from "@/lib/db"
 import { getSessionUser } from "@/lib/session"
-import { SKIN_RULESETS, SKIN_TYPES } from "@/lib/skin-upload"
+import { canAdmin } from "@/lib/roles"
+import { SKIN_RULESETS } from "@/lib/skin-upload"
 
 export const dynamic = "force-dynamic"
 
@@ -24,7 +27,16 @@ const OSK_MAGIC = Buffer.from([0x50, 0x4b, 0x03, 0x04])
 
 const VALID_RULESETS = new Set<string>(SKIN_RULESETS)
 
-const VALID_TYPES = new Set<string>(SKIN_TYPES)
+function skinToApi(skin: SkinWithUploader) {
+  return {
+    id: skin.id,
+    name: skin.name,
+    rulesets: JSON.parse(skin.rulesets) as string[],
+    scrollSpeed: skin.scroll_speed,
+    createdAt: skin.created_at,
+    submitter: { osuId: skin.osu_id, username: skin.uploader_username },
+  }
+}
 
 function parseRulesets(raw: string | null): string[] | null {
   const rulesets = (raw ?? "")
@@ -32,10 +44,6 @@ function parseRulesets(raw: string | null): string[] | null {
     .map((r) => r.trim())
     .filter((r) => VALID_RULESETS.has(r))
   return rulesets.length > 0 ? [...new Set(rulesets)] : null
-}
-
-function parseType(raw: string | null): string | null {
-  return raw !== null && VALID_TYPES.has(raw) ? raw : null
 }
 
 function parseScrollSpeed(raw: string | null): number | null {
@@ -73,22 +81,19 @@ class UploadGuard extends Transform {
   }
 }
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   const user = await getSessionUser()
   if (!user) {
     return Response.json({ error: "unauthorized" }, { status: 401 })
   }
-  return Response.json(
-    listSkinsByUser(user.osu_id).map((skin) => ({
-      id: skin.id,
-      name: skin.name,
-      rulesets: JSON.parse(skin.rulesets) as string[],
-      type: skin.type,
-      description: skin.description,
-      scrollSpeed: skin.scroll_speed,
-      createdAt: skin.created_at,
-    })),
-  )
+  const scope = request.nextUrl.searchParams.get("scope") ?? "own"
+  if (scope === "all") {
+    if (!canAdmin(user.role)) {
+      return Response.json({ error: "forbidden" }, { status: 403 })
+    }
+    return Response.json(listSkins().map(skinToApi))
+  }
+  return Response.json(listSkinsByUser(user.osu_id).map(skinToApi))
 }
 
 export async function POST(request: NextRequest) {
@@ -103,23 +108,14 @@ export async function POST(request: NextRequest) {
   const name = (request.nextUrl.searchParams.get("name") ?? "").trim()
   const fileName = request.nextUrl.searchParams.get("fileName") ?? ""
   const rulesets = parseRulesets(request.nextUrl.searchParams.get("rulesets"))
-  const type = parseType(request.nextUrl.searchParams.get("type"))
   const scrollSpeed = parseScrollSpeed(
     request.nextUrl.searchParams.get("scrollSpeed"),
   )
-  const description = (
-    request.nextUrl.searchParams.get("description") ?? ""
-  )
-    .trim()
-    .slice(0, 500)
   if (!name || name.length > 100) {
     return Response.json({ error: "invalid name" }, { status: 400 })
   }
   if (!rulesets) {
     return Response.json({ error: "invalid rulesets" }, { status: 400 })
-  }
-  if (!type) {
-    return Response.json({ error: "invalid type" }, { status: 400 })
   }
   if (
     request.nextUrl.searchParams.get("scrollSpeed") !== null &&
@@ -142,8 +138,6 @@ export async function POST(request: NextRequest) {
     user.osu_id,
     name,
     JSON.stringify(rulesets),
-    type,
-    description,
     scrollSpeed,
   )
 
@@ -179,10 +173,9 @@ export async function POST(request: NextRequest) {
       id: row.id,
       name: row.name,
       rulesets: JSON.parse(row.rulesets) as string[],
-      type: row.type,
-      description: row.description,
       scrollSpeed: row.scroll_speed,
       createdAt: row.created_at,
+      submitter: { osuId: user.osu_id, username: user.username },
     },
     { status: 201 },
   )

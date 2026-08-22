@@ -93,6 +93,7 @@ function migrate(db: Database) {
       status TEXT NOT NULL DEFAULT 'pool',
       manual INTEGER NOT NULL DEFAULT 0,
       locked INTEGER NOT NULL DEFAULT 0,
+      ruleset TEXT NOT NULL DEFAULT 'osu',
       beatmap_checksum TEXT NOT NULL,
       beatmap_id INTEGER NOT NULL,
       beatmap_title TEXT NOT NULL,
@@ -105,6 +106,7 @@ function migrate(db: Database) {
       beatmap_background_url TEXT NOT NULL,
       beatmap_cover_list_url TEXT NOT NULL,
       score_rank TEXT NOT NULL,
+      score_osu_id INTEGER,
       score_username TEXT NOT NULL,
       score_date INTEGER NOT NULL,
       score_total INTEGER NOT NULL,
@@ -148,10 +150,10 @@ function migrate(db: Database) {
   ensureColumn(db, "replays", "status", "status TEXT NOT NULL DEFAULT 'pool'")
   ensureColumn(db, "replays", "manual", "manual INTEGER NOT NULL DEFAULT 0")
   ensureColumn(db, "replays", "locked", "locked INTEGER NOT NULL DEFAULT 0")
+  ensureColumn(db, "replays", "score_osu_id", "score_osu_id INTEGER")
+  ensureColumn(db, "replays", "ruleset", "ruleset TEXT NOT NULL DEFAULT 'osu'")
   ensureColumn(db, "skins", "file_path", "file_path TEXT NOT NULL DEFAULT ''")
   ensureColumn(db, "skins", "rulesets", "rulesets TEXT NOT NULL DEFAULT '[]'")
-  ensureColumn(db, "skins", "type", "type TEXT NOT NULL DEFAULT 'nm'")
-  ensureColumn(db, "skins", "description", "description TEXT NOT NULL DEFAULT ''")
   ensureColumn(db, "skins", "scroll_speed", "scroll_speed REAL")
   db.run("CREATE INDEX IF NOT EXISTS idx_sessions_osu_id ON sessions(osu_id)")
   db.run("CREATE INDEX IF NOT EXISTS idx_sessions_expires_at ON sessions(expires_at)")
@@ -262,8 +264,6 @@ export type SkinRow = {
   osu_id: number
   name: string
   rulesets: string
-  type: string
-  description: string
   scroll_speed: number | null
   file_path: string
   created_at: number
@@ -273,13 +273,11 @@ export function insertSkin(
   osuId: number,
   name: string,
   rulesets: string,
-  type: string,
-  description: string,
   scrollSpeed: number | null,
 ): number {
   const result = getDb().run(
-    "INSERT INTO skins (osu_id, name, rulesets, type, description, scroll_speed, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
-    [osuId, name, rulesets, type, description, scrollSpeed, Date.now()],
+    "INSERT INTO skins (osu_id, name, rulesets, scroll_speed, created_at) VALUES (?, ?, ?, ?, ?)",
+    [osuId, name, rulesets, scrollSpeed, Date.now()],
   )
   return Number(result.lastInsertRowid)
 }
@@ -294,10 +292,25 @@ export function getSkinById(id: number): SkinRow | null {
   ).get(id)
 }
 
-export function listSkinsByUser(osuId: number): SkinRow[] {
-  return getDb().query<SkinRow, [number]>(
-    "SELECT * FROM skins WHERE osu_id = ? ORDER BY created_at DESC",
+export type SkinWithUploader = SkinRow & { uploader_username: string }
+
+export function listSkinsByUser(osuId: number): SkinWithUploader[] {
+  return getDb().query<SkinWithUploader, [number]>(
+    `SELECT s.*, u.username AS uploader_username
+     FROM skins s
+     JOIN users u ON u.osu_id = s.osu_id
+     WHERE s.osu_id = ?
+     ORDER BY s.created_at DESC`,
   ).all(osuId)
+}
+
+export function listSkins(): SkinWithUploader[] {
+  return getDb().query<SkinWithUploader, []>(
+    `SELECT s.*, u.username AS uploader_username
+     FROM skins s
+     JOIN users u ON u.osu_id = s.osu_id
+     ORDER BY s.created_at DESC`,
+  ).all()
 }
 
 export function deleteSkin(id: number) {
@@ -314,6 +327,7 @@ export type ReplayRow = {
   status: ReplayStatus
   manual: number
   locked: number
+  ruleset: string
   beatmap_checksum: string
   beatmap_id: number
   beatmap_title: string
@@ -326,6 +340,7 @@ export type ReplayRow = {
   beatmap_background_url: string
   beatmap_cover_list_url: string
   score_rank: string
+  score_osu_id: number | null
   score_username: string
   score_date: number
   score_total: number
@@ -348,6 +363,7 @@ export type NewReplay = {
   fileName: string
   skinName: string | null
   notes: string
+  ruleset: string
   beatmapChecksum: string
   beatmap: {
     id: number
@@ -363,6 +379,7 @@ export type NewReplay = {
   }
   score: {
     rank: string
+    osuId: number | null
     username: string
     date: number
     totalScore: number
@@ -380,23 +397,24 @@ export type NewReplay = {
 
 export function insertReplay(input: NewReplay): number {
   const result = getDb().run(
-    `INSERT INTO replays (
-       osu_id, file_path, file_name, notes, skin_name, status,
+     `INSERT INTO replays (
+       osu_id, file_path, file_name, notes, skin_name, status, ruleset,
        beatmap_checksum, beatmap_id, beatmap_title, beatmap_artist, beatmap_creator,
        beatmap_version, beatmap_star_rating, beatmap_max_combo, beatmap_url,
        beatmap_background_url, beatmap_cover_list_url,
-       score_rank, score_username, score_date, score_total, score_max_combo,
+       score_rank, score_osu_id, score_username, score_date, score_total, score_max_combo,
        score_accuracy, score_mods,
        score_count_geki, score_count_katu, score_count_300, score_count_100,
        score_count_50, score_count_miss,
        created_at
-     ) VALUES (?, ?, ?, ?, ?, 'pool', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+     ) VALUES (?, ?, ?, ?, ?, 'pool', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       input.osuId,
       "",
       input.fileName,
       input.notes,
       input.skinName,
+      input.ruleset,
       input.beatmapChecksum,
       input.beatmap.id,
       input.beatmap.title,
@@ -409,6 +427,7 @@ export function insertReplay(input: NewReplay): number {
       input.beatmap.backgroundUrl,
       input.beatmap.coverListUrl,
       input.score.rank,
+      input.score.osuId,
       input.score.username,
       input.score.date,
       input.score.totalScore,
@@ -425,6 +444,33 @@ export function insertReplay(input: NewReplay): number {
     ],
   )
   return Number(result.lastInsertRowid)
+}
+
+export function findDuplicateReplay(
+  beatmapChecksum: string,
+  scoreOsuId: number | null,
+  scoreUsername: string,
+  scoreDate: number,
+): ReplayWithSubmitter | null {
+  if (scoreOsuId !== null) {
+    return getDb().query<
+      ReplayWithSubmitter,
+      [string, number, number]
+    >(
+      `SELECT r.*, u.username AS submitter_username
+       FROM replays r
+       JOIN users u ON u.osu_id = r.osu_id
+       WHERE r.beatmap_checksum = ? AND r.score_osu_id = ? AND r.score_date = ?
+       LIMIT 1`,
+    ).get(beatmapChecksum, scoreOsuId, scoreDate)
+  }
+  return getDb().query<ReplayWithSubmitter, [string, string, number]>(
+    `SELECT r.*, u.username AS submitter_username
+     FROM replays r
+     JOIN users u ON u.osu_id = r.osu_id
+     WHERE r.beatmap_checksum = ? AND r.score_username = ? COLLATE NOCASE AND r.score_date = ?
+     LIMIT 1`,
+  ).get(beatmapChecksum, scoreUsername, scoreDate)
 }
 
 export function updateReplayFilePath(id: number, filePath: string) {
@@ -672,6 +718,7 @@ export function replayRowToApi(
     beatmapChecksum: row.beatmap_checksum,
     status: row.status,
     manual: row.manual === 1,
+    ruleset: row.ruleset,
     beatmap: {
       id: row.beatmap_id,
       title: row.beatmap_title,
@@ -686,6 +733,7 @@ export function replayRowToApi(
     },
     score: {
       rank: row.score_rank,
+      osuId: row.score_osu_id,
       username: row.score_username,
       date: row.score_date,
       totalScore: row.score_total,

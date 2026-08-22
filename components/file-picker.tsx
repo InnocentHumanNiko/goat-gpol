@@ -62,7 +62,9 @@ export function FilePicker({
       />
       {fileName ? (
         <>
-          <span className="truncate text-sm font-medium">{fileName}</span>
+          <span className="max-w-full px-2 text-sm font-medium break-all">
+            {fileName}
+          </span>
           <span className="text-xs text-muted-foreground">
             Click to choose a different file
           </span>

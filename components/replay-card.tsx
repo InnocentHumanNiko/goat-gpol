@@ -7,6 +7,8 @@ import { Badge } from "@/components/ui/badge"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { IconFile, IconTool } from "@tabler/icons-react"
 import { cn } from "@/lib/utils"
+import type { SkinRuleset } from "@/lib/skin-upload"
+import { RULESET_META } from "@/components/ruleset-icons"
 import type { Replay, ScoreStats } from "@/components/app-shell"
 
 function Stat({
@@ -34,9 +36,11 @@ function Stat({
 export function ScoreStatsPanel({
   score,
   beatmapMaxCombo,
+  ruleset,
 }: {
   score: ScoreStats
   beatmapMaxCombo: number
+  ruleset?: SkinRuleset
 }) {
   return (
     <dl className="flex w-full flex-col gap-2">
@@ -64,22 +68,21 @@ export function ScoreStatsPanel({
         />
       </div>
       <div className="flex divide-x overflow-hidden rounded-md border bg-muted/50">
-        {( score.ruleset === 3 ?
-          [
-            { label: "300g", value: score.countGeki },
-            { label: "300", value: score.count300 },
-            { label: "200", value: score.countKatu },
-            { label: "100", value: score.count100 },
-            { label: "50", value: score.count50 },
-            { label: "Miss", value: score.countMiss },
-          ] as const
-          :
-          [
-            { label: "300", value: score.count300 },
-            { label: "100", value: score.count100 },
-            { label: "50", value: score.count50 },
-            { label: "Miss", value: score.countMiss },
-          ] as const
+        {(ruleset === "mania"
+          ? [
+              { label: "300g", value: score.countGeki },
+              { label: "300", value: score.count300 },
+              { label: "200", value: score.countKatu },
+              { label: "100", value: score.count100 },
+              { label: "50", value: score.count50 },
+              { label: "Miss", value: score.countMiss },
+            ] as const
+          : [
+              { label: "300", value: score.count300 },
+              { label: "100", value: score.count100 },
+              { label: "50", value: score.count50 },
+              { label: "Miss", value: score.countMiss },
+            ] as const
         ).map((s) => (
           <div
             key={s.label}
@@ -204,10 +207,34 @@ export function ReplayCard({
         hideArrow
         className="w-fit max-w-none items-stretch gap-3 rounded-xl border bg-card px-4 py-3 text-foreground shadow-lg"
       >
-        <ScoreStatsPanel
-          score={replay.score}
-          beatmapMaxCombo={replay.beatmap.maxCombo}
-        />
+        <div className="flex flex-col gap-2">
+          <ScoreStatsPanel
+            score={replay.score}
+            beatmapMaxCombo={replay.beatmap.maxCombo}
+            ruleset={replay.ruleset as SkinRuleset}
+          />
+          <div className="flex items-center justify-between gap-3 text-sm">
+            {(() => {
+              const meta = RULESET_META[replay.ruleset as SkinRuleset]
+              return meta ? (
+                <span className="flex items-center gap-1.5 font-medium">
+                  <meta.icon className="size-3.5" />
+                  {meta.label}
+                </span>
+              ) : (
+                <span />
+              )
+            })()}
+            {replay.skinName && (
+              <span className="text-muted-foreground">
+                Skin:{" "}
+                <span className="font-medium text-foreground">
+                  {replay.skinName}
+                </span>
+              </span>
+            )}
+          </div>
+        </div>
       </TooltipContent>
     </Tooltip>
   )
