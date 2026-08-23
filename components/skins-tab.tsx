@@ -25,6 +25,7 @@ import { Slider } from "@/components/ui/slider"
 import { Spinner } from "@/components/ui/spinner"
 import {
   IconChevronDown,
+  IconDownload,
   IconPalette,
   IconUpload,
 } from "@tabler/icons-react"
@@ -35,6 +36,7 @@ import {
   OsuIcon,
   OsuManiaIcon,
   OsuTaikoIcon,
+  RulesetIcon,
 } from "@/components/ruleset-icons"
 import type { Skin } from "@/components/app-shell"
 
@@ -281,22 +283,30 @@ export function SkinsTab({
               <div className="flex min-w-0 items-start gap-2">
                 <IconPalette className="size-4 shrink-0 translate-y-0.5 text-muted-foreground" />
                 <div className="flex min-w-0 flex-col gap-0.5">
-                  <span className="truncate text-sm font-medium">
-                    {skin.name}
+                  <span className="flex items-center gap-1.5 text-sm font-medium">
+                    <span className="truncate">{skin.name}</span>
+                    {skin.rulesets.map((ruleset) => (
+                      <RulesetIcon
+                        key={ruleset}
+                        ruleset={ruleset as SkinRuleset}
+                        className="size-3.5 shrink-0 text-muted-foreground"
+                      />
+                    ))}
                   </span>
                   <p className="text-xs text-muted-foreground">
-                    Uploaded by{" "}
-                    <a
-                      href={`https://osu.ppy.sh/users/${skin.submitter.osuId}`}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="font-medium text-foreground hover:underline underline-offset-2"
-                    >
-                      {skin.submitter.username}
-                    </a>{" "}
-                    on {new Date(skin.createdAt).toLocaleDateString()}
+                    Uploaded on {new Date(skin.createdAt).toLocaleDateString()}
                   </p>
                 </div>
+              </div>
+              <div className="flex shrink-0 items-center">
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  render={<a href={`/skins/${skin.id}/file`} />}
+                  aria-label="Download skin"
+                >
+                  <IconDownload />
+                </Button>
               </div>
             </li>
           ))}

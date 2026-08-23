@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { ReplayCard } from "@/components/replay-card"
+import { RulesetIcon } from "@/components/ruleset-icons"
 import {
   Select,
   SelectItem,
@@ -48,6 +49,7 @@ import {
 } from "@/components/app-shell"
 import type { ReplayApi } from "@/lib/replay-types"
 import type { JudgeSettings } from "@/lib/judging"
+import type { SkinRuleset } from "@/lib/skin-upload"
 
 type ManageUser = {
   osuId: number
@@ -451,8 +453,15 @@ function SkinsPanel({
               <div className="flex min-w-0 items-start gap-2">
                 <IconPalette className="size-4 shrink-0 translate-y-0.5 text-muted-foreground" />
                 <div className="flex min-w-0 flex-col gap-0.5">
-                  <span className="truncate text-sm font-medium">
-                    {skin.name}
+                  <span className="flex items-center gap-1.5 text-sm font-medium">
+                    <span className="truncate">{skin.name}</span>
+                    {skin.rulesets.map((ruleset) => (
+                      <RulesetIcon
+                        key={ruleset}
+                        ruleset={ruleset as SkinRuleset}
+                        className="size-3.5 shrink-0 text-muted-foreground"
+                      />
+                    ))}
                   </span>
                   <p className="text-xs text-muted-foreground">
                     Uploaded by{" "}
