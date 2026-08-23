@@ -14,6 +14,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog"
 import { FilePicker } from "@/components/file-picker"
+import { HeaderSearch } from "@/components/header-search"
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -27,6 +28,7 @@ import {
   IconChevronDown,
   IconDownload,
   IconPalette,
+  IconSearch,
   IconUpload,
 } from "@tabler/icons-react"
 import type { SkinRuleset, UploadProgress } from "@/lib/skin-upload"
@@ -233,6 +235,17 @@ export function SkinsTab({
   canSubmit: boolean
 }) {
   const [open, setOpen] = useState(false)
+  const [query, setQuery] = useState("")
+
+  const normalizedQuery = query.trim().toLowerCase()
+  const filteredSkins =
+    normalizedQuery === ""
+      ? skins
+      : skins.filter((skin) =>
+          [skin.name, skin.submitter.username].some((value) =>
+            value.toLowerCase().includes(normalizedQuery),
+          ),
+        )
 
   const handleUpload = async (
     name: string,
@@ -254,28 +267,38 @@ export function SkinsTab({
             Custom skins to be used when rendering.
           </p>
         </div>
-        {canSubmit ? (
-          <Dialog open={open} onOpenChange={setOpen}>
-            <DialogTrigger render={<Button />}>
-              <IconUpload />
-              Upload skin
-            </DialogTrigger>
-            <DialogContent>
-              <SkinUploadForm onUpload={handleUpload} />
-            </DialogContent>
-          </Dialog>
-        ) : (
-          <p className="text-sm text-muted-foreground">
-            You are banned from uploading new skins.
-          </p>
-        )}
+        <div className="flex items-center gap-2">
+          <HeaderSearch onChange={setQuery} />
+          {canSubmit ? (
+            <Dialog open={open} onOpenChange={setOpen}>
+              <DialogTrigger render={<Button />}>
+                <IconUpload />
+                Upload skin
+              </DialogTrigger>
+              <DialogContent>
+                <SkinUploadForm onUpload={handleUpload} />
+              </DialogContent>
+            </Dialog>
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              You are banned from uploading new skins.
+            </p>
+          )}
+        </div>
       </header>
 
       {skins.length === 0 ? (
         <EmptyState />
+      ) : filteredSkins.length === 0 ? (
+        <Card>
+          <CardContent className="flex flex-col items-center gap-2 py-10 text-center">
+            <IconSearch className="size-8 text-muted-foreground" />
+            <p className="text-sm font-medium">No skins match your search</p>
+          </CardContent>
+        </Card>
       ) : (
         <ul className="flex flex-col divide-y rounded-xl bg-card shadow-xs ring-1 ring-foreground/10">
-          {skins.map((skin) => (
+          {filteredSkins.map((skin) => (
             <li
               key={skin.id}
               className="flex items-center justify-between gap-4 px-4 py-3"
