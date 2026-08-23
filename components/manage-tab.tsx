@@ -77,7 +77,6 @@ function RoleSelect({
 }) {
   const isManagerTarget = user.role === "manager"
   const canChangeAdmin = isManager(actor.role)
-  const canGrantAdmin = canChangeAdmin || actor.role === "admin"
   const isSelf = user.osuId === actor.osuId
   const disabled =
     isSelf || isManagerTarget || (user.role === "admin" && !canChangeAdmin)
@@ -101,7 +100,7 @@ function RoleSelect({
         <SelectItem value="judge">
           <SelectItemText>judge</SelectItemText>
         </SelectItem>
-        {canGrantAdmin && (
+        {canChangeAdmin && (
           <SelectItem value="admin">
             <SelectItemText>admin</SelectItemText>
           </SelectItem>

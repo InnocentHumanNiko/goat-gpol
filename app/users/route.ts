@@ -95,6 +95,12 @@ export async function PATCH(request: NextRequest) {
         { status: 403 },
       )
     }
+    if (role === "admin" && !isManager(actor.role)) {
+      return Response.json(
+        { error: "only the manager can promote to admin" },
+        { status: 403 },
+      )
+    }
     nextRole = role as Role
   }
 
