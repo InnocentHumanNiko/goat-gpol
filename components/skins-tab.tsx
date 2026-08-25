@@ -273,7 +273,7 @@ export function SkinsTab({
             <Dialog open={open} onOpenChange={setOpen}>
               <DialogTrigger render={<Button />}>
                 <IconUpload />
-                Upload skin
+                Upload
               </DialogTrigger>
               <DialogContent>
                 <SkinUploadForm onUpload={handleUpload} />
