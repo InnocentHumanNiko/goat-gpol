@@ -273,6 +273,7 @@ function ReplaySubmitForm({
             accept=".osr"
             label="Choose a .osr replay"
             hint="or drag and drop it here"
+            fileName={file?.name ?? null}
             onFileChange={handleFileChange}
           />
           {file && detecting && (

@@ -8,19 +8,23 @@ export function FilePicker({
   accept,
   label,
   hint,
+  fileName,
   onFileChange,
 }: {
   accept: string
   label: string
   hint: string
+  fileName?: string | null
   onFileChange?: (file: File | null) => void
 }) {
   const inputRef = useRef<HTMLInputElement>(null)
-  const [fileName, setFileName] = useState<string | null>(null)
+  const [localFileName, setLocalFileName] = useState<string | null>(null)
   const [dragging, setDragging] = useState(false)
 
+  const displayedFileName = fileName !== undefined ? fileName : localFileName
+
   const selectFile = (file: File | null) => {
-    setFileName(file?.name ?? null)
+    setLocalFileName(file?.name ?? null)
     onFileChange?.(file)
   }
 
@@ -45,7 +49,7 @@ export function FilePicker({
         "flex w-full cursor-pointer flex-col items-center justify-center gap-1 rounded-lg border border-dashed px-4 py-8 text-center outline-none transition-colors focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50",
         dragging
           ? "border-ring bg-muted/60"
-          : fileName
+          : displayedFileName
             ? "border-ring bg-muted/40"
             : "border-border hover:border-ring hover:bg-muted/30"
       )}
@@ -60,10 +64,10 @@ export function FilePicker({
           e.target.value = ""
         }}
       />
-      {fileName ? (
+      {displayedFileName ? (
         <>
           <span className="max-w-full px-2 text-sm font-medium break-all">
-            {fileName}
+            {displayedFileName}
           </span>
           <span className="text-xs text-muted-foreground">
             Click to choose a different file
