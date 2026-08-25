@@ -10,6 +10,18 @@ export const DEFAULT_JUDGE_SETTINGS: JudgeSettings = {
   thresholdPercent: 50,
 }
 
+export type SkinLimits = {
+  maxSkinsPerUser: number
+  maxSkinSizeMb: number
+}
+
+export const DEFAULT_SKIN_LIMITS: SkinLimits = {
+  maxSkinsPerUser: 15,
+  maxSkinSizeMb: 50,
+}
+
+export type AppSettings = JudgeSettings & SkinLimits
+
 export function statusFromJudgments(
   scores: number[],
   eligibleJudges: number,

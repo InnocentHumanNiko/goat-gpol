@@ -2,24 +2,30 @@ import { NextRequest } from "next/server"
 
 import {
   getJudgeSettings,
+  getSkinLimits,
   recomputeAllReplayStatuses,
   updateJudgeSettings,
+  updateSkinLimits,
 } from "@/lib/db"
 import { getSessionUser } from "@/lib/session"
 import { canAdmin } from "@/lib/roles"
-import type { JudgeSettings } from "@/lib/judging"
+import type { AppSettings, JudgeSettings, SkinLimits } from "@/lib/judging"
 
 export const dynamic = "force-dynamic"
 
-function parseSettings(body: unknown): Partial<JudgeSettings> | null {
+function parseSettings(
+  body: unknown,
+): (Partial<JudgeSettings> & Partial<SkinLimits>) | null {
   if (!body || typeof body !== "object") {
     return null
   }
-  const { thresholdScore, thresholdPercent } = body as Record<
-    string,
-    unknown
-  >
-  const out: Partial<JudgeSettings> = {}
+  const {
+    thresholdScore,
+    thresholdPercent,
+    maxSkinsPerUser,
+    maxSkinSizeMb,
+  } = body as Record<string, unknown>
+  const out: Partial<JudgeSettings> & Partial<SkinLimits> = {}
   const int = (value: unknown) =>
     typeof value === "number" && Number.isInteger(value) ? value : undefined
 
@@ -37,7 +43,25 @@ function parseSettings(body: unknown): Partial<JudgeSettings> | null {
     }
     out.thresholdPercent = percent
   }
+  const skins = int(maxSkinsPerUser)
+  if (skins !== undefined) {
+    if (skins < 0) {
+      return null
+    }
+    out.maxSkinsPerUser = skins
+  }
+  const size = int(maxSkinSizeMb)
+  if (size !== undefined) {
+    if (size < 1) {
+      return null
+    }
+    out.maxSkinSizeMb = size
+  }
   return out
+}
+
+function currentSettings(): AppSettings {
+  return { ...getJudgeSettings(), ...getSkinLimits() }
 }
 
 export async function GET() {
@@ -48,7 +72,7 @@ export async function GET() {
   if (!canAdmin(user.role)) {
     return Response.json({ error: "forbidden" }, { status: 403 })
   }
-  return Response.json(getJudgeSettings())
+  return Response.json(currentSettings())
 }
 
 export async function PATCH(request: NextRequest) {
@@ -63,7 +87,26 @@ export async function PATCH(request: NextRequest) {
   if (!input) {
     return Response.json({ error: "invalid settings" }, { status: 400 })
   }
-  updateJudgeSettings(input)
-  recomputeAllReplayStatuses()
-  return Response.json(getJudgeSettings())
+  const judgeInput: Partial<JudgeSettings> = {}
+  if (input.thresholdScore !== undefined) {
+    judgeInput.thresholdScore = input.thresholdScore
+  }
+  if (input.thresholdPercent !== undefined) {
+    judgeInput.thresholdPercent = input.thresholdPercent
+  }
+  const limitsInput: Partial<SkinLimits> = {}
+  if (input.maxSkinsPerUser !== undefined) {
+    limitsInput.maxSkinsPerUser = input.maxSkinsPerUser
+  }
+  if (input.maxSkinSizeMb !== undefined) {
+    limitsInput.maxSkinSizeMb = input.maxSkinSizeMb
+  }
+  if (Object.keys(judgeInput).length > 0) {
+    updateJudgeSettings(judgeInput)
+    recomputeAllReplayStatuses()
+  }
+  if (Object.keys(limitsInput).length > 0) {
+    updateSkinLimits(limitsInput)
+  }
+  return Response.json(currentSettings())
 }

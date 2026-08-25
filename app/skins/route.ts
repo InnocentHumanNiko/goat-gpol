@@ -9,6 +9,7 @@ import { NextRequest } from "next/server"
 import {
   deleteSkin,
   getSkinById,
+  getSkinLimits,
   insertSkin,
   listSkins,
   listSkinsByUser,
@@ -20,8 +21,6 @@ import { canAdmin } from "@/lib/roles"
 import { SKIN_RULESETS } from "@/lib/skin-upload"
 
 export const dynamic = "force-dynamic"
-
-const MAX_SKIN_BYTES = 500 * 1024 * 1024
 
 const OSK_MAGIC = Buffer.from([0x50, 0x4b, 0x03, 0x04])
 
@@ -67,13 +66,16 @@ class SkinUploadError extends Error {
 
 class UploadGuard extends Transform {
   private seen = 0
+  constructor(private maxBytes: number) {
+    super()
+  }
   _transform(chunk: Buffer, _enc: BufferEncoding, cb: (e?: Error | null, d?: Buffer) => void) {
     if (this.seen === 0 && !chunk.subarray(0, OSK_MAGIC.length).equals(OSK_MAGIC)) {
       cb(new SkinUploadError("invalid file type", 400))
       return
     }
     this.seen += chunk.length
-    if (this.seen > MAX_SKIN_BYTES) {
+    if (this.seen > this.maxBytes) {
       cb(new SkinUploadError("file too large", 413))
       return
     }
@@ -105,6 +107,12 @@ export async function POST(request: NextRequest) {
     return Response.json({ error: "banned" }, { status: 403 })
   }
 
+  const limits = getSkinLimits()
+  if (listSkinsByUser(user.osu_id).length >= limits.maxSkinsPerUser) {
+    return Response.json({ error: "skin-limit-reached" }, { status: 403 })
+  }
+  const maxSkinBytes = limits.maxSkinSizeMb * 1024 * 1024
+
   const name = (request.nextUrl.searchParams.get("name") ?? "").trim()
   const fileName = request.nextUrl.searchParams.get("fileName") ?? ""
   const rulesets = parseRulesets(request.nextUrl.searchParams.get("rulesets"))
@@ -127,7 +135,7 @@ export async function POST(request: NextRequest) {
     return Response.json({ error: "invalid file type" }, { status: 400 })
   }
   const contentLength = Number(request.headers.get("content-length"))
-  if (Number.isFinite(contentLength) && contentLength > MAX_SKIN_BYTES) {
+  if (Number.isFinite(contentLength) && contentLength > maxSkinBytes) {
     return Response.json({ error: "file too large" }, { status: 413 })
   }
   if (!request.body) {
@@ -149,7 +157,7 @@ export async function POST(request: NextRequest) {
   try {
     await pipeline(
       Readable.fromWeb(request.body as unknown as NodeWebReadableStream),
-      new UploadGuard(),
+      new UploadGuard(maxSkinBytes),
       createWriteStream(tempPath),
     )
   } catch (error) {

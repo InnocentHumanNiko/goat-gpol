@@ -115,11 +115,15 @@ export function ReplayCard({
   actions,
   badges,
   as = "li",
+  showSubmitter = false,
+  clip = false,
 }: {
   replay: Replay
   actions?: ReactNode
   badges?: ReactNode
   as?: "li" | "div"
+  showSubmitter?: boolean
+  clip?: boolean
 }) {
   return (
     <Tooltip>
@@ -153,7 +157,10 @@ export function ReplayCard({
               href={replay.beatmap.url}
               target="_blank"
               rel="noreferrer"
-              className="min-w-0 truncate text-sm font-medium hover:underline underline-offset-2"
+              className={cn(
+                "min-w-0 truncate text-sm font-medium hover:underline underline-offset-2",
+                clip && "max-w-[80%]",
+              )}
             >
               {replay.beatmap.artist} - {replay.beatmap.title} [
               {replay.beatmap.version}]
@@ -195,16 +202,23 @@ export function ReplayCard({
             on {replay.score.date.toLocaleDateString()}
           </p>
           <p className="text-xs text-muted-foreground">
-            Submitted by{" "}
-            <a
-              href={`https://osu.ppy.sh/users/${replay.submitter.osuId}`}
-              target="_blank"
-              rel="noreferrer"
-              className="font-medium text-foreground hover:underline underline-offset-2"
-            >
-              {replay.submitter.username}
-            </a>{" "}
-            on {new Date(replay.createdAt).toLocaleDateString()}
+            {showSubmitter ? (
+              <>
+                Submitted by{" "}
+                <a
+                  href={`https://osu.ppy.sh/users/${replay.submitter.osuId}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="font-medium text-foreground hover:underline underline-offset-2"
+                >
+                  {replay.submitter.username}
+                </a>{" "}
+                on{" "}
+              </>
+            ) : (
+              "Submitted on "
+            )}
+            {new Date(replay.createdAt).toLocaleDateString()}
           </p>
           {replay.notes !== "" && (
             <p className="text-sm text-muted-foreground">{replay.notes}</p>

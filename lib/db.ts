@@ -9,8 +9,10 @@ import type {
 } from "@/lib/replay-types"
 import {
   DEFAULT_JUDGE_SETTINGS,
+  DEFAULT_SKIN_LIMITS,
   statusFromJudgments,
   type JudgeSettings,
+  type SkinLimits,
 } from "@/lib/judging"
 
 export type UserRow = {
@@ -623,6 +625,44 @@ export function updateJudgeSettings(partial: Partial<JudgeSettings>) {
   }
   if (partial.thresholdPercent !== undefined) {
     entries.push(["thresholdPercent", partial.thresholdPercent])
+  }
+  for (const [key, value] of entries) {
+    getDb().run(
+      `INSERT INTO settings (key, value) VALUES (?, ?)
+       ON CONFLICT(key) DO UPDATE SET value = excluded.value`,
+      [key, String(value)],
+    )
+  }
+}
+
+export function getSkinLimits(): SkinLimits {
+  const rows = getDb().query<{ key: string; value: string }, []>(
+    "SELECT key, value FROM settings",
+  ).all()
+  const map = new Map(rows.map((r) => [r.key, r.value]))
+  const num = (key: string, fallback: number) => {
+    const value = Number(map.get(key))
+    return Number.isFinite(value) ? value : fallback
+  }
+  return {
+    maxSkinsPerUser: num(
+      "maxSkinsPerUser",
+      DEFAULT_SKIN_LIMITS.maxSkinsPerUser,
+    ),
+    maxSkinSizeMb: num(
+      "maxSkinSizeMb",
+      DEFAULT_SKIN_LIMITS.maxSkinSizeMb,
+    ),
+  }
+}
+
+export function updateSkinLimits(partial: Partial<SkinLimits>) {
+  const entries: [string, number][] = []
+  if (partial.maxSkinsPerUser !== undefined) {
+    entries.push(["maxSkinsPerUser", partial.maxSkinsPerUser])
+  }
+  if (partial.maxSkinSizeMb !== undefined) {
+    entries.push(["maxSkinSizeMb", partial.maxSkinSizeMb])
   }
   for (const [key, value] of entries) {
     getDb().run(

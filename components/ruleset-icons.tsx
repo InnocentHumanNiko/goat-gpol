@@ -1,6 +1,7 @@
 import type { SVGProps } from "react"
 
 import type { SkinRuleset } from "@/lib/skin-upload"
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 
 export const RULESET_META: Record<
   SkinRuleset,
@@ -10,6 +11,27 @@ export const RULESET_META: Record<
   mania: { label: "osu!mania", icon: OsuManiaIcon },
   catch: { label: "osu!catch", icon: OsuCatchIcon },
   taiko: { label: "osu!taiko", icon: OsuTaikoIcon },
+}
+
+export function RulesetIcon({
+  ruleset,
+  className,
+}: {
+  ruleset: SkinRuleset
+  className?: string
+}) {
+  const meta = RULESET_META[ruleset]
+  if (!meta) {
+    return null
+  }
+  return (
+    <Tooltip>
+      <TooltipTrigger render={<span className="inline-flex" />}>
+        <meta.icon className={className} />
+      </TooltipTrigger>
+      <TooltipContent>{meta.label}</TooltipContent>
+    </Tooltip>
+  )
 }
 
 function RulesetSvg(props: SVGProps<SVGSVGElement>) {

@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/dialog"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { FilePicker } from "@/components/file-picker"
+import { HeaderSearch } from "@/components/header-search"
 import { ReplayCard, ScoreStatsPanel } from "@/components/replay-card"
 import {
   Select,
@@ -31,6 +32,7 @@ import { Textarea } from "@/components/ui/textarea"
 import {
   IconExternalLink,
   IconFile,
+  IconSearch,
   IconUpload,
 } from "@tabler/icons-react"
 import { decodeReplayFile, type DecodedScore } from "@/lib/replay-decode"
@@ -245,6 +247,11 @@ function ReplaySubmitForm({
           )}
         </div>
         <DialogFooter>
+          {submitError && (
+            <p className="text-sm text-destructive sm:mr-auto sm:self-center">
+              {submitError}
+            </p>
+          )}
           <Button variant="outline" onClick={() => setConfirm(null)}>
             Back
           </Button>
@@ -252,9 +259,6 @@ function ReplaySubmitForm({
             {submitting ? "Submitting…" : "Submit replay"}
           </Button>
         </DialogFooter>
-        {submitError && (
-          <p className="text-sm text-destructive">{submitError}</p>
-        )}
       </div>
     )
   }
@@ -271,6 +275,7 @@ function ReplaySubmitForm({
             accept=".osr"
             label="Choose a .osr replay"
             hint="or drag and drop it here"
+            fileName={file?.name ?? null}
             onFileChange={handleFileChange}
           />
           {file && detecting && (
@@ -330,12 +335,16 @@ function ReplaySubmitForm({
             placeholder="goated score frfr"
           />
         </div>
-        {error && <p className="text-sm text-destructive">{error}</p>}
         {busy && (
           <p className="text-sm text-muted-foreground">Decoding replay…</p>
         )}
       </div>
       <DialogFooter>
+        {error && (
+          <p className="text-sm text-destructive sm:mr-auto sm:self-center">
+            {error}
+          </p>
+        )}
         <DialogClose render={<Button variant="outline" />}>Cancel</DialogClose>
         <Button type="submit" disabled={!file || busy}>
           Next
@@ -368,6 +377,24 @@ export function ReplaysTab({
   canSubmit: boolean
 }) {
   const [open, setOpen] = useState(false)
+  const [query, setQuery] = useState("")
+
+  const normalizedQuery = query.trim().toLowerCase()
+  const filteredReplays =
+    normalizedQuery === ""
+      ? replays
+      : replays.filter((replay) =>
+          [
+            replay.fileName,
+            replay.notes,
+            replay.skinName,
+            replay.beatmap.title,
+            replay.beatmap.artist,
+            replay.beatmap.creator,
+            replay.beatmap.version,
+            replay.score.username,
+          ].some((value) => value?.toLowerCase().includes(normalizedQuery)),
+        )
 
   return (
     <div className="flex flex-col gap-6">
@@ -378,37 +405,50 @@ export function ReplaysTab({
             Replays you have submitted will show here.
           </p>
         </div>
-        {canSubmit ? (
-          <Dialog open={open} onOpenChange={setOpen}>
-            <DialogTrigger render={<Button />}>
-              <IconUpload />
-              Submit
-            </DialogTrigger>
-            <DialogContent className="w-fit min-w-[min(24rem,calc(100%-2rem))] max-w-[min(42rem,calc(100%-2rem))] py-8">
-              <ReplaySubmitForm
-                skins={skins}
-                onSubmit={async (input, file) => {
-                  await onSubmit(input, file)
-                  setOpen(false)
-                }}
-              />
-            </DialogContent>
-          </Dialog>
-        ) : (
-          <p className="text-sm text-muted-foreground">
-            You are banned from submitting new replays.
-          </p>
-        )}
+        <div className="flex items-center gap-2">
+          <HeaderSearch onChange={setQuery} />
+          {canSubmit ? (
+            <Dialog open={open} onOpenChange={setOpen}>
+              <DialogTrigger render={<Button />}>
+                <IconUpload />
+                Submit
+              </DialogTrigger>
+              <DialogContent className="w-fit min-w-[min(24rem,calc(100%-2rem))] max-w-[min(42rem,calc(100%-2rem))] py-8">
+                <ReplaySubmitForm
+                  skins={skins}
+                  onSubmit={async (input, file) => {
+                    await onSubmit(input, file)
+                    setOpen(false)
+                  }}
+                />
+              </DialogContent>
+            </Dialog>
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              You are banned from submitting new replays.
+            </p>
+          )}
+        </div>
       </header>
 
       {replays.length === 0 ? (
         <EmptyState />
+      ) : filteredReplays.length === 0 ? (
+        <Card>
+          <CardContent className="flex flex-col items-center gap-2 py-10 text-center">
+            <IconSearch className="size-8 text-muted-foreground" />
+            <p className="text-sm font-medium">
+              No replays match your search
+            </p>
+          </CardContent>
+        </Card>
       ) : (
         <ul className="flex flex-col divide-y overflow-hidden rounded-xl bg-card shadow-xs ring-1 ring-foreground/10">
-          {replays.map((replay) => (
+          {filteredReplays.map((replay) => (
             <ReplayCard
               key={replay.id}
               replay={replay}
+              clip
             />
           ))}
         </ul>

@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react"
 
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -16,7 +16,9 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
+import { Slider } from "@/components/ui/slider"
 import { ReplayCard } from "@/components/replay-card"
+import { RulesetIcon } from "@/components/ruleset-icons"
 import {
   Select,
   SelectItem,
@@ -47,7 +49,13 @@ import {
   type Skin,
 } from "@/components/app-shell"
 import type { ReplayApi } from "@/lib/replay-types"
-import type { JudgeSettings } from "@/lib/judging"
+import {
+  DEFAULT_SKIN_LIMITS,
+  type AppSettings,
+  type JudgeSettings,
+  type SkinLimits,
+} from "@/lib/judging"
+import type { SkinRuleset } from "@/lib/skin-upload"
 
 type ManageUser = {
   osuId: number
@@ -77,7 +85,6 @@ function RoleSelect({
 }) {
   const isManagerTarget = user.role === "manager"
   const canChangeAdmin = isManager(actor.role)
-  const canGrantAdmin = canChangeAdmin || actor.role === "admin"
   const isSelf = user.osuId === actor.osuId
   const disabled =
     isSelf || isManagerTarget || (user.role === "admin" && !canChangeAdmin)
@@ -101,7 +108,7 @@ function RoleSelect({
         <SelectItem value="judge">
           <SelectItemText>judge</SelectItemText>
         </SelectItem>
-        {canGrantAdmin && (
+        {canChangeAdmin && (
           <SelectItem value="admin">
             <SelectItemText>admin</SelectItemText>
           </SelectItem>
@@ -335,10 +342,11 @@ function ReplaysPanel({
           </p>
         ) : (
           replays.map((replay) => (
-            <ReplayCard
-              key={replay.id}
-              as="div"
-              replay={replay}
+              <ReplayCard
+                key={replay.id}
+                as="div"
+                replay={replay}
+                showSubmitter
               actions={
                 <>
                   <Button
@@ -428,16 +436,125 @@ function RemoveSkinDialog({
   )
 }
 
+const MAX_SKINS_SLIDER = 100
+const MAX_SIZE_SLIDER = 500
+
+function SkinLimitsSection({
+  limits,
+  onSave,
+}: {
+  limits: AppSettings | null
+  onSave: (limits: Partial<SkinLimits>) => Promise<void>
+}) {
+  const [skinsDraft, setSkinsDraft] = useState(() =>
+    String(limits?.maxSkinsPerUser ?? DEFAULT_SKIN_LIMITS.maxSkinsPerUser),
+  )
+  const [sizeDraft, setSizeDraft] = useState(() =>
+    String(limits?.maxSkinSizeMb ?? DEFAULT_SKIN_LIMITS.maxSkinSizeMb),
+  )
+  const [error, setError] = useState<string | null>(null)
+  const mountedRef = useRef(false)
+
+  useEffect(() => {
+    if (!mountedRef.current) {
+      mountedRef.current = true
+      return
+    }
+    const maxSkins = Number(skinsDraft)
+    const maxSize = Number(sizeDraft)
+    const body: Partial<SkinLimits> = {}
+    if (Number.isInteger(maxSkins)) {
+      body.maxSkinsPerUser = maxSkins
+    }
+    if (Number.isInteger(maxSize)) {
+      body.maxSkinSizeMb = maxSize
+    }
+    if (Object.keys(body).length === 0) {
+      return
+    }
+    const timer = setTimeout(() => {
+      setError(null)
+      onSave(body).catch(() => {
+        setError("Could not save the limits.")
+      })
+    }, 500)
+    return () => clearTimeout(timer)
+  }, [skinsDraft, sizeDraft, onSave])
+
+  const clamp = (value: number, min: number, max: number) =>
+    Math.min(Math.max(value, min), max)
+  return (
+    <section className="flex flex-col gap-3">
+      <h3 className="font-heading text-base font-semibold">Limits</h3>
+      <div className="flex flex-col gap-4 rounded-xl bg-card p-4 shadow-xs ring-1 ring-foreground/10">
+        <div className="flex flex-col gap-1.5">
+          <div className="flex items-center justify-between gap-2">
+            <label htmlFor="limit-max-skins" className="text-sm font-medium">
+              Maximum skins allowed per player
+            </label>
+            <Input
+              id="limit-max-skins"
+              type="number"
+              min={0}
+              value={skinsDraft}
+              onChange={(e) => setSkinsDraft(e.target.value)}
+              className="h-8 w-20 text-right tabular-nums"
+            />
+          </div>
+          <Slider
+            value={clamp(Number(skinsDraft) || 0, 0, MAX_SKINS_SLIDER)}
+            onValueChange={(value) =>
+              setSkinsDraft(String(Array.isArray(value) ? value[0] : value))
+            }
+            min={0}
+            max={MAX_SKINS_SLIDER}
+            step={1}
+          />
+        </div>
+        <div className="flex flex-col gap-1.5">
+          <div className="flex items-center justify-between gap-2">
+            <label htmlFor="limit-size" className="text-sm font-medium">
+              Maximum size per skin (MB)
+            </label>
+            <Input
+              id="limit-size"
+              type="number"
+              min={1}
+              value={sizeDraft}
+              onChange={(e) => setSizeDraft(e.target.value)}
+              className="h-8 w-20 text-right tabular-nums"
+            />
+          </div>
+          <Slider
+            value={clamp(Number(sizeDraft) || DEFAULT_SKIN_LIMITS.maxSkinSizeMb, 1, MAX_SIZE_SLIDER)}
+            onValueChange={(value) =>
+              setSizeDraft(String(Array.isArray(value) ? value[0] : value))
+            }
+            min={1}
+            max={MAX_SIZE_SLIDER}
+            step={5}
+          />
+        </div>
+        {error && <p className="text-sm text-destructive">{error}</p>}
+      </div>
+    </section>
+  )
+}
+
 function SkinsPanel({
   skins,
+  limitsSection,
   onRemove,
 }: {
   skins: Skin[]
+  limitsSection: ReactNode
   onRemove: (skin: Skin) => Promise<void>
 }) {
   return (
     <section className="flex flex-col gap-3">
       <h2 className="font-heading text-lg font-semibold">Skins</h2>
+      {limitsSection}
+      <h3 className="font-heading text-base font-semibold">Uploaded</h3>
       <div className="flex flex-col divide-y overflow-hidden rounded-xl bg-card shadow-xs ring-1 ring-foreground/10">
         {skins.length === 0 ? (
           <p className="px-4 py-3 text-sm text-muted-foreground">
@@ -452,8 +569,15 @@ function SkinsPanel({
               <div className="flex min-w-0 items-start gap-2">
                 <IconPalette className="size-4 shrink-0 translate-y-0.5 text-muted-foreground" />
                 <div className="flex min-w-0 flex-col gap-0.5">
-                  <span className="truncate text-sm font-medium">
-                    {skin.name}
+                  <span className="flex items-center gap-1.5 text-sm font-medium">
+                    <span className="truncate">{skin.name}</span>
+                    {skin.rulesets.map((ruleset) => (
+                      <RulesetIcon
+                        key={ruleset}
+                        ruleset={ruleset as SkinRuleset}
+                        className="size-3.5 shrink-0 text-muted-foreground"
+                      />
+                    ))}
                   </span>
                   <p className="text-xs text-muted-foreground">
                     Uploaded by{" "}
@@ -495,7 +619,7 @@ export function ManageTab({ user }: { user: SessionUser }) {
   const [skins, setSkins] = useState<Skin[]>([])
   const [loaded, setLoaded] = useState(false)
   const [failed, setFailed] = useState(false)
-  const [settings, setSettings] = useState<JudgeSettings | null>(null)
+  const [settings, setSettings] = useState<AppSettings | null>(null)
   const [scoreDraft, setScoreDraft] = useState("")
   const [percentDraft, setPercentDraft] = useState("")
   const [savingSettings, setSavingSettings] = useState(false)
@@ -534,7 +658,7 @@ export function ManageTab({ user }: { user: SessionUser }) {
         setReplays((replaysData as ReplayApi[]).map(replayFromApi))
         setSkins(skinsData as Skin[])
         if (settingsData) {
-          const s = settingsData as JudgeSettings
+          const s = settingsData as AppSettings
           setSettings(s)
           setScoreDraft(String(s.thresholdScore))
           setPercentDraft(String(s.thresholdPercent))
@@ -576,7 +700,7 @@ export function ManageTab({ user }: { user: SessionUser }) {
       if (!res.ok) {
         throw new Error("save-failed")
       }
-      const updated = (await res.json()) as JudgeSettings
+      const updated = (await res.json()) as AppSettings
       setSettings(updated)
       setScoreDraft(String(updated.thresholdScore))
       setPercentDraft(String(updated.thresholdPercent))
@@ -587,6 +711,21 @@ export function ManageTab({ user }: { user: SessionUser }) {
       setSavingSettings(false)
     }
   }
+
+  const saveLimits = useCallback(
+    async (input: Partial<SkinLimits>) => {
+      const res = await fetch("/settings", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(input),
+      })
+      if (!res.ok) {
+        throw new Error("save-failed")
+      }
+      setSettings((await res.json()) as AppSettings)
+    },
+    [],
+  )
 
   const changeUserRole = async (target: ManageUser, role: string) => {
     const res = await fetch("/users", {
@@ -718,7 +857,16 @@ export function ManageTab({ user }: { user: SessionUser }) {
               />
             )}
             {section === "skins" && (
-              <SkinsPanel skins={skins} onRemove={removeSkin} />
+              <SkinsPanel
+                skins={skins}
+                limitsSection={
+                  <SkinLimitsSection
+                    limits={settings}
+                    onSave={saveLimits}
+                  />
+                }
+                onRemove={removeSkin}
+              />
             )}
           </div>
         </div>

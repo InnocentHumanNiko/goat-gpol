@@ -14,6 +14,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog"
 import { FilePicker } from "@/components/file-picker"
+import { HeaderSearch } from "@/components/header-search"
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -24,10 +25,18 @@ import { Input } from "@/components/ui/input"
 import { Slider } from "@/components/ui/slider"
 import { Spinner } from "@/components/ui/spinner"
 import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
+import {
   IconChevronDown,
+  IconDownload,
   IconPalette,
+  IconSearch,
   IconUpload,
 } from "@tabler/icons-react"
+import type { SkinLimits } from "@/lib/judging"
 import type { SkinRuleset, UploadProgress } from "@/lib/skin-upload"
 import { cn } from "@/lib/utils"
 import {
@@ -35,6 +44,7 @@ import {
   OsuIcon,
   OsuManiaIcon,
   OsuTaikoIcon,
+  RulesetIcon,
 } from "@/components/ruleset-icons"
 import type { Skin } from "@/components/app-shell"
 
@@ -51,6 +61,7 @@ const RULESET_OPTIONS: {
 
 function SkinUploadForm({
   onUpload,
+  maxSkinSizeMb,
 }: {
   onUpload: (
     name: string,
@@ -59,6 +70,7 @@ function SkinUploadForm({
     rulesets?: SkinRuleset[],
     scrollSpeed?: number,
   ) => Promise<void>
+  maxSkinSizeMb: number
 }) {
   const [name, setName] = useState("")
   const [file, setFile] = useState<File | null>(null)
@@ -67,11 +79,17 @@ function SkinUploadForm({
   const [uploading, setUploading] = useState(false)
   const [progress, setProgress] = useState<UploadProgress | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [sizeExceeded, setSizeExceeded] = useState(false)
 
   const toggleRuleset = (id: SkinRuleset, checked: boolean) => {
     setRulesets((prev) =>
       checked ? [...prev, id] : prev.filter((r) => r !== id),
     )
+  }
+
+  const handleFileChange = (picked: File | null) => {
+    setFile(picked)
+    setSizeExceeded(picked !== null && picked.size > maxSkinSizeMb * 1024 * 1024)
   }
 
   const selectedLabels = RULESET_OPTIONS.filter((option) =>
@@ -93,8 +111,14 @@ function SkinUploadForm({
         [...rulesets],
         rulesets.includes("mania") ? scrollSpeed : undefined,
       )
-    } catch {
-      setError("Could not upload the skin. Please try again.")
+    } catch (err) {
+      setError(
+        err instanceof Error && err.message === "skin-limit-reached"
+          ? "You have reached the maximum number of skins."
+          : err instanceof Error && err.message === "file too large"
+            ? "The skin file exceeds the maximum allowed size."
+            : "Could not upload the skin. Please try again.",
+      )
       setUploading(false)
     }
   }
@@ -111,7 +135,8 @@ function SkinUploadForm({
             accept=".osk"
             label="Pick a skin file"
             hint="or drag and drop it here"
-            onFileChange={setFile}
+            fileName={file?.name ?? null}
+            onFileChange={handleFileChange}
           />
         </div>
         <div className="flex flex-col gap-1.5">
@@ -181,6 +206,11 @@ function SkinUploadForm({
         {error && <p className="text-sm text-destructive">{error}</p>}
       </div>
       <DialogFooter>
+        {sizeExceeded && (
+          <p className="text-sm text-destructive sm:mr-auto sm:self-center">
+            Skin exceeded size limit ({maxSkinSizeMb} MB)
+          </p>
+        )}
         {uploading && progress && (
           <p className="flex items-center gap-2 text-sm text-muted-foreground sm:mr-auto">
             <Spinner />
@@ -194,7 +224,8 @@ function SkinUploadForm({
             !file ||
             name.trim() === "" ||
             rulesets.length === 0 ||
-            uploading
+            uploading ||
+            sizeExceeded
           }
         >
           {uploading ? "Uploading…" : "Upload skin"}
@@ -219,6 +250,7 @@ export function SkinsTab({
   skins,
   onUpload,
   canSubmit,
+  skinLimits,
 }: {
   skins: Skin[]
   onUpload: (
@@ -229,8 +261,23 @@ export function SkinsTab({
     scrollSpeed?: number,
   ) => Promise<void>
   canSubmit: boolean
+  skinLimits: SkinLimits
 }) {
   const [open, setOpen] = useState(false)
+  const [query, setQuery] = useState("")
+
+  const limitReached =
+    canSubmit && skins.length >= skinLimits.maxSkinsPerUser
+
+  const normalizedQuery = query.trim().toLowerCase()
+  const filteredSkins =
+    normalizedQuery === ""
+      ? skins
+      : skins.filter((skin) =>
+          [skin.name, skin.submitter.username].some((value) =>
+            value.toLowerCase().includes(normalizedQuery),
+          ),
+        )
 
   const handleUpload = async (
     name: string,
@@ -252,28 +299,50 @@ export function SkinsTab({
             Custom skins to be used when rendering.
           </p>
         </div>
-        {canSubmit ? (
-          <Dialog open={open} onOpenChange={setOpen}>
-            <DialogTrigger render={<Button />}>
-              <IconUpload />
-              Upload skin
-            </DialogTrigger>
-            <DialogContent>
-              <SkinUploadForm onUpload={handleUpload} />
-            </DialogContent>
-          </Dialog>
-        ) : (
-          <p className="text-sm text-muted-foreground">
-            You are banned from uploading new skins.
-          </p>
-        )}
+        <div className="flex items-center gap-2">
+          <HeaderSearch onChange={setQuery} />
+          {canSubmit ? (
+            <Dialog open={open} onOpenChange={setOpen}>
+              <Tooltip>
+                <TooltipTrigger render={<span className="inline-flex" />}>
+                  <DialogTrigger render={<Button disabled={limitReached} />}>
+                    <IconUpload />
+                    Upload
+                  </DialogTrigger>
+                </TooltipTrigger>
+                {limitReached && (
+                  <TooltipContent>
+                    You cannot upload more skins.
+                  </TooltipContent>
+                )}
+              </Tooltip>
+              <DialogContent>
+                <SkinUploadForm
+                  onUpload={handleUpload}
+                  maxSkinSizeMb={skinLimits.maxSkinSizeMb}
+                />
+              </DialogContent>
+            </Dialog>
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              You are banned from uploading new skins.
+            </p>
+          )}
+        </div>
       </header>
 
       {skins.length === 0 ? (
         <EmptyState />
+      ) : filteredSkins.length === 0 ? (
+        <Card>
+          <CardContent className="flex flex-col items-center gap-2 py-10 text-center">
+            <IconSearch className="size-8 text-muted-foreground" />
+            <p className="text-sm font-medium">No skins match your search</p>
+          </CardContent>
+        </Card>
       ) : (
         <ul className="flex flex-col divide-y rounded-xl bg-card shadow-xs ring-1 ring-foreground/10">
-          {skins.map((skin) => (
+          {filteredSkins.map((skin) => (
             <li
               key={skin.id}
               className="flex items-center justify-between gap-4 px-4 py-3"
@@ -281,22 +350,30 @@ export function SkinsTab({
               <div className="flex min-w-0 items-start gap-2">
                 <IconPalette className="size-4 shrink-0 translate-y-0.5 text-muted-foreground" />
                 <div className="flex min-w-0 flex-col gap-0.5">
-                  <span className="truncate text-sm font-medium">
-                    {skin.name}
+                  <span className="flex items-center gap-1.5 text-sm font-medium">
+                    <span className="truncate">{skin.name}</span>
+                    {skin.rulesets.map((ruleset) => (
+                      <RulesetIcon
+                        key={ruleset}
+                        ruleset={ruleset as SkinRuleset}
+                        className="size-3.5 shrink-0 text-muted-foreground"
+                      />
+                    ))}
                   </span>
                   <p className="text-xs text-muted-foreground">
-                    Uploaded by{" "}
-                    <a
-                      href={`https://osu.ppy.sh/users/${skin.submitter.osuId}`}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="font-medium text-foreground hover:underline underline-offset-2"
-                    >
-                      {skin.submitter.username}
-                    </a>{" "}
-                    on {new Date(skin.createdAt).toLocaleDateString()}
+                    Uploaded on {new Date(skin.createdAt).toLocaleDateString()}
                   </p>
                 </div>
+              </div>
+              <div className="flex shrink-0 items-center">
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  render={<a href={`/skins/${skin.id}/file`} />}
+                  aria-label="Download skin"
+                >
+                  <IconDownload />
+                </Button>
               </div>
             </li>
           ))}
