@@ -247,6 +247,11 @@ function ReplaySubmitForm({
           )}
         </div>
         <DialogFooter>
+          {submitError && (
+            <p className="text-sm text-destructive sm:mr-auto sm:self-center">
+              {submitError}
+            </p>
+          )}
           <Button variant="outline" onClick={() => setConfirm(null)}>
             Back
           </Button>
@@ -254,9 +259,6 @@ function ReplaySubmitForm({
             {submitting ? "Submitting…" : "Submit replay"}
           </Button>
         </DialogFooter>
-        {submitError && (
-          <p className="text-sm text-destructive">{submitError}</p>
-        )}
       </div>
     )
   }
@@ -333,12 +335,16 @@ function ReplaySubmitForm({
             placeholder="goated score frfr"
           />
         </div>
-        {error && <p className="text-sm text-destructive">{error}</p>}
         {busy && (
           <p className="text-sm text-muted-foreground">Decoding replay…</p>
         )}
       </div>
       <DialogFooter>
+        {error && (
+          <p className="text-sm text-destructive sm:mr-auto sm:self-center">
+            {error}
+          </p>
+        )}
         <DialogClose render={<Button variant="outline" />}>Cancel</DialogClose>
         <Button type="submit" disabled={!file || busy}>
           Next
