@@ -342,10 +342,11 @@ function ReplaysPanel({
           </p>
         ) : (
           replays.map((replay) => (
-            <ReplayCard
-              key={replay.id}
-              as="div"
-              replay={replay}
+              <ReplayCard
+                key={replay.id}
+                as="div"
+                replay={replay}
+                showSubmitter
               actions={
                 <>
                   <Button

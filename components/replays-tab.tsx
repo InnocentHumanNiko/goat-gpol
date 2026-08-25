@@ -448,6 +448,7 @@ export function ReplaysTab({
             <ReplayCard
               key={replay.id}
               replay={replay}
+              clip
             />
           ))}
         </ul>
