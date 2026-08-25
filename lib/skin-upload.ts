@@ -49,7 +49,12 @@ export function uploadSkin({
       if (xhr.status >= 200 && xhr.status < 300) {
         resolve(xhr.response as SkinApi)
       } else {
-        reject(new Error("skin-upload-failed"))
+        reject(
+          new Error(
+            (xhr.response as { error?: string } | null)?.error ??
+              "skin-upload-failed",
+          ),
+        )
       }
     }
     xhr.onerror = () => reject(new Error("skin-upload-failed"))

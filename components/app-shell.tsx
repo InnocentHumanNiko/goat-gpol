@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 
 import { JudgeTab } from "@/components/judge-tab"
 import { ManageTab } from "@/components/manage-tab"
@@ -9,6 +9,7 @@ import { ReplaysTab } from "@/components/replays-tab"
 import { SiteNav } from "@/components/site-nav"
 import { SkinsTab } from "@/components/skins-tab"
 import { canAdmin, canJudge } from "@/lib/roles"
+import type { SkinLimits } from "@/lib/judging"
 import {
   uploadSkin,
   type SkinRuleset,
@@ -110,10 +111,12 @@ export function AppShell({
   user,
   initialReplays,
   initialSkins,
+  skinLimits,
 }: {
   user: SessionUser
   initialReplays: ReplayApi[]
   initialSkins: SkinApi[]
+  skinLimits: SkinLimits
 }) {
   const [tab, setTab] = useState<Tab>("replays")
   const [replays, setReplays] = useState<Replay[]>(() =>
@@ -122,6 +125,22 @@ export function AppShell({
   const [skins, setSkins] = useState<Skin[]>(() =>
     initialSkins.map((skin) => ({ ...skin })),
   )
+  const [limits, setLimits] = useState<SkinLimits>(skinLimits)
+
+  useEffect(() => {
+    let cancelled = false
+    fetch("/settings/limits")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (!cancelled && data) {
+          setLimits(data as SkinLimits)
+        }
+      })
+      .catch(() => {})
+    return () => {
+      cancelled = true
+    }
+  }, [tab])
 
   const addSkin = async (
     name: string,
@@ -196,6 +215,7 @@ export function AppShell({
             skins={skins}
             onUpload={addSkin}
             canSubmit={canSubmit}
+            skinLimits={limits}
           />
         )}
         {tab === "judge" && canJudge(user.role) && (

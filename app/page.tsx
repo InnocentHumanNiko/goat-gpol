@@ -1,6 +1,11 @@
 import { AppShell } from "@/components/app-shell"
 import { LoginPage } from "@/components/login-page"
-import { listReplaysByUser, listSkinsByUser, replayRowToApi } from "@/lib/db"
+import {
+  getSkinLimits,
+  listReplaysByUser,
+  listSkinsByUser,
+  replayRowToApi,
+} from "@/lib/db"
 import { getSessionUser } from "@/lib/session"
 
 export default async function HomePage({
@@ -36,6 +41,7 @@ export default async function HomePage({
         createdAt: skin.created_at,
         submitter: { osuId: skin.osu_id, username: skin.uploader_username },
       }))}
+      skinLimits={getSkinLimits()}
     />
   )
 }
